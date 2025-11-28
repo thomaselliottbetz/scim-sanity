@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scim-sanity"
+version = "0.1.0"
+description = "A zero-dependency CLI tool for validating SCIM 2.0 User and Group payloads (RFC 7643/7644)"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "Thomas Betz", email = "thomas@seattlecodestudio.com"}
+]
+keywords = ["scim", "scim2", "validation", "rfc7643", "rfc7644", "cli", "identity"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration :: Authentication/Directory",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "click>=8.0.0",
+    "jsonschema>=4.0.0",
+]
+
+[project.scripts]
+scim-sanity = "scim_sanity.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/thomasbetz/scim-sanity"
+Documentation = "https://github.com/thomasbetz/scim-sanity#readme"
+Repository = "https://github.com/thomasbetz/scim-sanity"
+Issues = "https://github.com/thomasbetz/scim-sanity/issues"
+
+[tool.setuptools]
+packages = ["scim_sanity"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
