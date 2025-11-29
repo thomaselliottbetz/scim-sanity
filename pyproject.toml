@@ -41,10 +41,10 @@ dev = [
 scim-sanity = "scim_sanity.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/thomasbetz/scim-sanity"
-Documentation = "https://github.com/thomasbetz/scim-sanity#readme"
-Repository = "https://github.com/thomasbetz/scim-sanity"
-Issues = "https://github.com/thomasbetz/scim-sanity/issues"
+Homepage = "https://github.com/thomaselliottbetz/scim-sanity"
+Documentation = "https://github.com/thomaselliottbetz/scim-sanity#readme"
+Repository = "https://github.com/thomaselliottbetz/scim-sanity"
+Issues = "https://github.com/thomaselliottbetz/scim-sanity/issues"
 
 [tool.setuptools]
 packages = ["scim_sanity"]

@@ -41,7 +41,7 @@ pip install scim-sanity
 ### From source
 
 ```bash
-git clone https://github.com/thomasbetz/scim-sanity.git
+git clone https://github.com/thomaselliottbetz/scim-sanity.git
 cd scim-sanity
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -471,7 +471,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ```bash
 # Clone the repository
-git clone https://github.com/thomasbetz/scim-sanity.git
+git clone https://github.com/thomaselliottbetz/scim-sanity.git
 cd scim-sanity
 
 # Create virtual environment
