@@ -651,6 +651,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 scim-sanity now supports validation of **Agent** and **AgenticApplication** resources as defined in the IETF draft extension "SCIM Agents and Agentic Applications Extension" (draft-abbey-scim-agent-extension-00). This extension enables SCIM-based provisioning and management of AI agents and agentic applications as first-class identities.
 
+### Terminology Note
+
+Throughout this documentation, you may see:
+- **AgenticApplication** (one word) when referring to the schema name or technical identifier
+- **Agentic Applications** (two words) when referencing the IETF draft extension title
+- **agentic applications** (lowercase) in descriptive prose
+
+All refer to the same resource type - the variation is intentional for readability and technical accuracy.
+
 ### Why Agent Support?
 
 With the rise of AI agents and agentic applications, organizations need to manage these workloads as distinct identities separate from traditional users. The IETF draft extension provides:
@@ -715,4 +724,4 @@ The validator automatically detects the resource type from the schema URI, so yo
 
 - Enhanced validation for agent-specific attributes (owner, capabilities, subject)
 - Potential integration as a tool in agent frameworks and MCP servers
-- Support for evolving non-human identity standards
+- Support for evolving non-human identity standards 
