@@ -1,15 +1,20 @@
 # scim-sanity
 
-> **Catch 95% of SCIM integration bugs before they hit production**
+> **Catch SCIM integration bugs before they hit production**
 
-A lightweight, zero-dependency CLI linter for SCIM 2.0 User and Group payloads (RFC 7643/7644).
-
-![demo gif](demo.gif)
+A lightweight CLI linter for SCIM 2.0 payloads – now with early support for provisioning AI agents and agentic applications
 
 Works offline · Pure Python standard library · No external dependencies required.
 
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/thomaselliottbetz/scim-sanity/main.svg)](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
+
+## Built for the Agentic Future
+
+The rapid growth of AI agents requires robust identity management distinct from traditional users. The October 2025 IETF draft introduces dedicated Agent and AgenticApplication resource types in SCIM, enabling standardized provisioning, ownership tracking, and lifecycle control for non-human workloads.
+
+scim-sanity adds early validation for these schemas, helping developers and IAM teams adopt the new standard confidently and avoid integration issues in multi-agent environments.
 
 ## Why scim-sanity?
 
@@ -19,6 +24,7 @@ SCIM (System for Cross-domain Identity Management) integrations are notoriously 
 
 ✅ **Zero dependencies** - Works with Python standard library only (optional Click for better CLI)  
 ✅ **SCIM 2.0 compliant** - Validates against RFC 7643 and RFC 7644  
+✅ **Agent extension support** - Validates Agent and AgenticApplication resources (draft-abbey-scim-agent-extension-00)  
 ✅ **Comprehensive checks** - Catches 15+ common integration errors  
 ✅ **Color output** - Beautiful, readable error messages with line numbers  
 ✅ **PATCH support** - Validates both full resources and PATCH operations  
@@ -71,6 +77,10 @@ echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"test
 # Test with an invalid resource (missing userName)
 echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"]}' | python3 -m scim_sanity --stdin
 # Expected output: Error about missing userName
+
+# Test with an Agent resource
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:Agent"],"name":"test-agent"}' | python3 -m scim_sanity --stdin
+# Expected output: ✅ Valid SCIM resource
 ```
 
 ## Usage
@@ -108,6 +118,12 @@ scim-sanity user.json
 
 # Validate a Group resource
 scim-sanity group.json
+
+# Validate an Agent resource (auto-detected from schema URI)
+scim-sanity agent.json
+
+# Validate an AgenticApplication resource (auto-detected from schema URI)
+scim-sanity agentic-app.json
 
 # Using Python module
 python3 -m scim_sanity user.json
@@ -204,6 +220,97 @@ else
 fi
 ```
 
+## Pre-commit Integration
+
+Automatically validate SCIM payloads on every commit to enforce compliance in developer workflows. This is ideal for Infrastructure as Code (IaC) repositories, provisioning templates, security automation pipelines, and any codebase managing SCIM resources.
+
+### Installation
+
+1. Install pre-commit:
+   ```bash
+   pip install pre-commit
+   ```
+
+2. Install the git hook:
+   ```bash
+   pre-commit install
+   ```
+
+3. Add `.pre-commit-config.yaml` to your repository root:
+
+```yaml
+# Pre-commit hook configuration for scim-sanity
+# See https://pre-commit.com for more information
+repos:
+  - repo: local
+    hooks:
+      - id: scim-sanity
+        name: Validate SCIM resources with scim-sanity
+        entry: python -m scim_sanity
+        language: system
+        types: [json]
+        exclude: |
+          (?x)^(
+            .*/node_modules/.*|
+            .*/\.venv/.*|
+            .*/venv/.*|
+            .*/ENV/.*|
+            .*/env/.*|
+            .*/\.tox/.*|
+            .*/dist/.*|
+            .*/build/.*|
+            .*package\.json$|
+            .*package-lock\.json$|
+            .*tsconfig.*\.json$|
+            .*jsconfig\.json$|
+            .*\.pre-commit-config\.yaml$|
+            .*\.gitignore$|
+            .*\.vscode/.*|
+            .*\.idea/.*|
+            .*\.pytest_cache/.*|
+            .*\.mypy_cache/.*|
+            .*\.coverage$|
+            .*coverage\.json$
+          )$
+        pass_filenames: true
+        require_serial: true
+        always_run: false
+        stages: [commit]
+```
+
+### How It Works
+
+The hook automatically validates all JSON files on commit, excluding common configuration files and dependency directories. Files without SCIM schema URNs will be validated by scim-sanity and will fail if they don't conform to SCIM specifications, ensuring only valid SCIM resources are committed.
+
+**On valid commit:**
+```bash
+$ git commit -m "Add new user resource"
+scim-sanity................................................................Passed
+[main abc1234] Add new user resource
+```
+
+**On invalid commit:**
+```bash
+$ git commit -m "Add invalid user resource"
+scim-sanity................................................................Failed
+- hook id: scim-sanity
+- exit code: 1
+
+Found 1 error(s):
+
+❌ Missing required attribute: 'userName' (schema: urn:ietf:params:scim:schemas:core:2.0:User) at userName
+```
+
+### Pre-commit.ci Integration
+
+The [pre-commit.ci](https://pre-commit.ci) badge at the top of this README shows the status of pre-commit checks on pull requests. To enable pre-commit.ci for this repository:
+
+1. Enable the service at https://pre-commit.ci (sign in with GitHub)
+2. Install the GitHub App on this repository
+3. Pre-commit.ci will automatically run hooks on pull requests
+
+**Note:** The badge will show a "not found" status until the service is enabled and has run at least once.
+
 ### Understanding Output
 
 #### Valid Resource
@@ -252,10 +359,13 @@ scim-sanity performs the following checks:
 ### Required Attributes
 - ✅ Ensures `userName` is present for User resources
 - ✅ Ensures `displayName` is present for Group resources
+- ✅ Ensures `name` is present and non-empty for Agent resources
+- ✅ Ensures `name` is present and non-empty for AgenticApplication resources
 - ✅ Validates all required schema attributes
 
 ### Schema Validation
-- ✅ Validates schema URNs (core User, Group, enterprise extension)
+- ✅ Validates schema URNs (core User, Group, Agent, AgenticApplication, enterprise extension)
+- ✅ Auto-detects resource type from schema URIs (no flags needed)
 - ✅ Rejects unknown or invalid schema URNs
 - ✅ Ensures `schemas` field is present and non-empty
 
@@ -359,6 +469,49 @@ scim-sanity performs the following checks:
       "displayName": "CEO"
     }
   }
+}
+```
+
+### Valid Agent Resource
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
+  "name": "research-assistant",
+  "displayName": "Research Assistant",
+  "agentType": "Assistant",
+  "active": true,
+  "description": "An AI research assistant agent"
+}
+```
+
+**Minimal Agent Resource** (only `name` is required):
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
+  "name": "helpdesk-bot"
+}
+```
+
+### Valid AgenticApplication Resource
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],
+  "name": "assistant-platform",
+  "displayName": "Assistant Platform",
+  "description": "A platform for AI research agents",
+  "active": true
+}
+```
+
+**Minimal AgenticApplication Resource** (only `name` is required):
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],
+  "name": "my-agentic-app"
 }
 ```
 
@@ -492,7 +645,74 @@ pytest
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Agent and AgenticApplication Support
+
+### Overview
+
+scim-sanity now supports validation of **Agent** and **AgenticApplication** resources as defined in the IETF draft extension "SCIM Agents and Agentic Applications Extension" (draft-abbey-scim-agent-extension-00). This extension enables SCIM-based provisioning and management of AI agents and agentic applications as first-class identities.
+
+### Why Agent Support?
+
+With the rise of AI agents and agentic applications, organizations need to manage these workloads as distinct identities separate from traditional users. The IETF draft extension provides:
+
+- **Standardized schema** for agent identity management via SCIM
+- **Separation of concerns** - Agents are distinct from Users/Groups
+- **Interoperability** - Enables SCIM-based agent discovery and provisioning
+- **Unified management** - Reuses existing SCIM infrastructure
+
+Common use cases include:
+- Provisioning AI assistants and chatbots as SCIM resources
+- Managing access and entitlements for agent workloads
+- Tracking agent ownership and accountability
+- Integrating agent identity management with existing IAM systems
+
+### Key Features
+
+- **Auto-detection**: Resource type is automatically detected from schema URIs - no special flags needed
+- **Minimal validation**: Only validates required fields (`name` for Agents/AgenticApplications) per the draft specification
+- **Schema compliance**: Validates against the complete Agent and AgenticApplication schemas
+- **Backward compatible**: Existing User/Group validation continues to work unchanged
+
+### Schema URIs
+
+- Agent: `urn:ietf:params:scim:schemas:core:2.0:Agent`
+- AgenticApplication: `urn:ietf:params:scim:schemas:core:2.0:AgenticApplication`
+
+### Validation Rules
+
+For **Agent** resources:
+- `name` attribute is **REQUIRED** and must be non-empty
+- All other attributes (displayName, agentType, active, etc.) are optional
+- Validates mutability rules (e.g., subject, owners are read-only)
+
+For **AgenticApplication** resources:
+- `name` attribute is **REQUIRED** and must be non-empty
+- All other attributes (displayName, description, active) are optional
+
+### Example Usage
+
+```bash
+# Validate an Agent resource
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:Agent"],"name":"my-agent"}' | scim-sanity --stdin
+
+# Validate an AgenticApplication resource  
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],"name":"my-app"}' | scim-sanity --stdin
+
+# Validate from file
+scim-sanity agent.json
+scim-sanity agentic-application.json
+```
+
+The validator automatically detects the resource type from the schema URI, so you use the same command-line interface for all resource types.
+
 ## References
 
 - [RFC 7643 - SCIM: Core Schema](https://tools.ietf.org/html/rfc7643)
 - [RFC 7644 - SCIM: Protocol](https://tools.ietf.org/html/rfc7644)
+- [draft-abbey-scim-agent-extension-00 - SCIM Agents and Agentic Applications Extension](https://datatracker.ietf.org/doc/draft-abbey-scim-agent-extension/)
+
+## Roadmap
+
+- Enhanced validation for agent-specific attributes (owner, capabilities, subject)
+- Potential integration as a tool in agent frameworks and MCP servers
+- Support for evolving non-human identity standards

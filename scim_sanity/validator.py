@@ -20,7 +20,7 @@ class ValidationError:
 
 
 class SCIMValidator:
-    """Validates SCIM 2.0 User and Group resources and PATCH operations."""
+    """Validates SCIM 2.0 User, Group, Agent, and Agentic Application resources and PATCH operations."""
     
     def __init__(self):
         self.errors: List[ValidationError] = []
@@ -57,14 +57,22 @@ class SCIMValidator:
             self.errors.append(ValidationError("'schemas' must be a non-empty array"))
             return False, self.errors
         
-        # Determine resource type
+        # Determine resource type by checking for core schema URNs
+        # Auto-detection: Resource type is determined by the presence of schema URNs,
+        # so no explicit --agent-mode flag is needed. The validator automatically
+        # detects Agent/AgenticApplication resources based on their schema URIs.
         is_user = "urn:ietf:params:scim:schemas:core:2.0:User" in schemas
         is_group = "urn:ietf:params:scim:schemas:core:2.0:Group" in schemas
+        is_agent = "urn:ietf:params:scim:schemas:core:2.0:Agent" in schemas
+        is_agentic_application = "urn:ietf:params:scim:schemas:core:2.0:AgenticApplication" in schemas
         
-        if not is_user and not is_group:
+        # Validate that at least one known core schema is present
+        if not is_user and not is_group and not is_agent and not is_agentic_application:
             self.errors.append(ValidationError(
-                "Invalid schema URN. Must include 'urn:ietf:params:scim:schemas:core:2.0:User' or "
-                "'urn:ietf:params:scim:schemas:core:2.0:Group'"
+                "Invalid schema URN. Must include 'urn:ietf:params:scim:schemas:core:2.0:User', "
+                "'urn:ietf:params:scim:schemas:core:2.0:Group', "
+                "'urn:ietf:params:scim:schemas:core:2.0:Agent', or "
+                "'urn:ietf:params:scim:schemas:core:2.0:AgenticApplication'"
             ))
             return False, self.errors
         
@@ -82,6 +90,10 @@ class SCIMValidator:
             self._validate_user_specific(data)
         elif is_group:
             self._validate_group_specific(data)
+        elif is_agent:
+            self._validate_agent_specific(data)
+        elif is_agentic_application:
+            self._validate_agentic_application_specific(data)
         
         # Check for immutable attributes being set
         self._check_immutable_attributes(data, schemas)
@@ -226,6 +238,43 @@ class SCIMValidator:
         # displayName is required for Groups
         if "displayName" not in data:
             self.errors.append(ValidationError("Group resource missing required attribute: 'displayName'"))
+    
+    def _validate_agent_specific(self, data: Dict[str, Any]):
+        """
+        Agent-specific validations per draft-abbey-scim-agent-extension-00.
+        
+        Validates that Agent resources conform to the Agent schema requirements:
+        - 'name' attribute is REQUIRED (section 5.1.4 of the draft)
+        - 'name' must be non-empty (used as unique identifier for authentication)
+        
+        Note: Only 'name' is required. Other attributes like 'displayName' and 'active'
+        are optional per the specification. This minimal validation approach follows
+        the draft's principle that "only one attribute is required" for Agents.
+        """
+        # name is required for Agents (per draft-abbey-scim-agent-extension-00, section 5.1.4)
+        if "name" not in data:
+            self.errors.append(ValidationError("Agent resource missing required attribute: 'name'"))
+        elif data.get("name") == "":
+            # The draft specifies that name MUST be non-empty as it's used for authentication
+            self.errors.append(ValidationError("Agent resource 'name' attribute must be non-empty"))
+    
+    def _validate_agentic_application_specific(self, data: Dict[str, Any]):
+        """
+        AgenticApplication-specific validations per draft-abbey-scim-agent-extension-00.
+        
+        Validates that AgenticApplication resources conform to the schema requirements:
+        - 'name' attribute is REQUIRED (section 5.2.4 of the draft)
+        - 'name' must be non-empty (unique identifier for the application)
+        
+        AgenticApplications represent applications that host or provide access to agents,
+        serving as containers and runtime environments for agent management.
+        """
+        # name is required for AgenticApplications (per draft-abbey-scim-agent-extension-00, section 5.2.4)
+        if "name" not in data:
+            self.errors.append(ValidationError("AgenticApplication resource missing required attribute: 'name'"))
+        elif data.get("name") == "":
+            # The draft specifies that name MUST be non-empty as it's the unique identifier
+            self.errors.append(ValidationError("AgenticApplication resource 'name' attribute must be non-empty"))
     
     def _check_immutable_attributes(self, data: Dict[str, Any], schemas: List[str]):
         """Check if immutable attributes are being set (should only be set by server)."""

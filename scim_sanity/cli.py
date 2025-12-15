@@ -60,7 +60,7 @@ def _validate_and_report(data: dict, operation: str = "full", file_path: Optiona
 def _main_no_click(args: list):
     """Fallback main function when Click is not available."""
     if not args or args[0] in ["-h", "--help"]:
-        print("""scim-sanity: Validate SCIM 2.0 User and Group payloads
+        print("""scim-sanity: Validate SCIM 2.0 User, Group, Agent, and AgenticApplication payloads
 
 Usage:
   scim-sanity <file>              Validate a SCIM resource file
@@ -126,11 +126,11 @@ if HAS_CLICK:
     @click.argument("file", required=False, type=click.Path(exists=True))
     @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
     @click.option("--stdin", is_flag=True, help="Read JSON from stdin")
-    @click.version_option(version="0.1.0")
+    @click.version_option(version="0.2.0")
     def main(file: Optional[str], patch: bool, stdin: bool):
-        """Validate SCIM 2.0 User and Group payloads (RFC 7643/7644).
+        """Validate SCIM 2.0 User, Group, Agent, and AgenticApplication payloads (RFC 7643/7644).
         
-        Catch 95% of SCIM integration bugs before they hit production.
+        Catch SCIM integration bugs before they hit production.
         
         Examples:
         

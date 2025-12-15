@@ -112,11 +112,148 @@ ENTERPRISE_USER_SCHEMA = {
     ]
 }
 
+# Agent schema (draft-abbey-scim-agent-extension-00)
+# 
+# Defines the schema for AI Agent resources as specified in the IETF draft
+# "SCIM Agents and Agentic Applications Extension" (draft-abbey-scim-agent-extension-00).
+# 
+# Agents represent AI workloads with their own identifiers, metadata, and privileges,
+# independent of runtime environments. Unlike traditional software workloads, agents
+# have unpredictable behavior due to AI model delegation.
+#
+# Key attributes:
+# - name (REQUIRED): Unique identifier for the agent, used for authentication
+# - displayName: Human-readable display name (optional, name used as fallback)
+# - agentType: Classification (e.g., "Assistant", "Researcher", "Chat bot")
+# - active: Administrative status (boolean)
+# - subject: OIDC subject claim for token federation correlation (read-only)
+# - owners: Users/Groups accountable for the agent (multi-valued, read-only)
+# - protocols: Communication protocols supported (e.g., A2A, OpenAPI, MCP-Server)
+# - applications: References to AgenticApplications this agent belongs to
+# - parent: Parent agent in hierarchy (if supported)
+# - groups, entitlements, roles: Standard SCIM attributes for access control
+#
+# Reference: https://datatracker.ietf.org/doc/draft-abbey-scim-agent-extension/
+CORE_AGENT_SCHEMA = {
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
+    "id": "urn:ietf:params:scim:schemas:core:2.0:Agent",
+    "name": "Agent",
+    "description": "An AI agent",
+    "attributes": [
+        {"name": "name", "type": "string", "required": True, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "server"},
+        {"name": "displayName", "type": "string", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "agentType", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+        {"name": "active", "type": "boolean", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "description", "type": "string", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "subject", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        {"name": "groups", "type": "complex", "multiValued": True, "required": False, "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "$ref", "type": "reference", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "type", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        ]},
+        {"name": "entitlements", "type": "complex", "multiValued": True, "required": False, "mutability": "readWrite", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "type", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "primary", "type": "boolean", "required": False, "mutability": "readWrite", "returned": "default"},
+        ]},
+        {"name": "roles", "type": "complex", "multiValued": True, "required": False, "mutability": "readWrite", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "type", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "primary", "type": "boolean", "required": False, "mutability": "readWrite", "returned": "default"},
+        ]},
+        {"name": "x509Certificates", "type": "complex", "multiValued": True, "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "binary", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "type", "type": "string", "required": False, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+            {"name": "primary", "type": "boolean", "required": False, "mutability": "readWrite", "returned": "default"},
+        ]},
+        {"name": "applications", "type": "complex", "multiValued": True, "required": False, "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "$ref", "type": "reference", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        ]},
+        {"name": "owners", "type": "complex", "multiValued": True, "required": False, "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "$ref", "type": "reference", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        ]},
+        {"name": "protocols", "type": "complex", "multiValued": True, "required": False, "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "type", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "specifiationUrl", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        ]},
+        {"name": "parent", "type": "complex", "multiValued": False, "required": False, "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "value", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "$ref", "type": "reference", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+            {"name": "display", "type": "string", "required": False, "caseExact": False, "mutability": "readOnly", "returned": "default", "uniqueness": "none"},
+        ]},
+        {"name": "id", "type": "string", "mutability": "readOnly", "returned": "always"},
+        {"name": "externalId", "type": "string", "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+        {"name": "meta", "type": "complex", "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "resourceType", "type": "string", "mutability": "readOnly", "returned": "default"},
+            {"name": "created", "type": "dateTime", "mutability": "readOnly", "returned": "default"},
+            {"name": "lastModified", "type": "dateTime", "mutability": "readOnly", "returned": "default"},
+            {"name": "location", "type": "reference", "mutability": "readOnly", "returned": "default"},
+            {"name": "version", "type": "string", "mutability": "readOnly", "returned": "default"},
+        ]},
+    ]
+}
+
+# AgenticApplication schema (draft-abbey-scim-agent-extension-00)
+#
+# Defines the schema for AgenticApplication resources as specified in the IETF draft
+# "SCIM Agents and Agentic Applications Extension" (draft-abbey-scim-agent-extension-00).
+#
+# AgenticApplications are software applications that host or provide access to one or
+# more agents. They serve as containers and runtime environments for agents, managing
+# authentication, authorization, and resource access.
+#
+# Key attributes:
+# - name (REQUIRED): Unique identifier for the application
+# - displayName: Human-readable display name (optional, name used as fallback)
+# - description: Description of the application
+# - active: Administrative status indicating if application is operational
+#
+# Note: This schema definition includes core attributes. Additional attributes may be
+# added as the draft specification evolves (e.g., applicationUrls, oAuthConfiguration).
+#
+# Reference: https://datatracker.ietf.org/doc/draft-abbey-scim-agent-extension/
+CORE_AGENTIC_APPLICATION_SCHEMA = {
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],
+    "id": "urn:ietf:params:scim:schemas:core:2.0:AgenticApplication",
+    "name": "AgenticApplication",
+    "description": "An agentic application",
+    "attributes": [
+        {"name": "name", "type": "string", "required": True, "caseExact": False, "mutability": "readWrite", "returned": "default", "uniqueness": "server"},
+        {"name": "displayName", "type": "string", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "description", "type": "string", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "active", "type": "boolean", "required": False, "mutability": "readWrite", "returned": "default"},
+        {"name": "id", "type": "string", "mutability": "readOnly", "returned": "always"},
+        {"name": "externalId", "type": "string", "mutability": "readWrite", "returned": "default", "uniqueness": "none"},
+        {"name": "meta", "type": "complex", "mutability": "readOnly", "returned": "default", "subAttributes": [
+            {"name": "resourceType", "type": "string", "mutability": "readOnly", "returned": "default"},
+            {"name": "created", "type": "dateTime", "mutability": "readOnly", "returned": "default"},
+            {"name": "lastModified", "type": "dateTime", "mutability": "readOnly", "returned": "default"},
+            {"name": "location", "type": "reference", "mutability": "readOnly", "returned": "default"},
+            {"name": "version", "type": "string", "mutability": "readOnly", "returned": "default"},
+        ]},
+    ]
+}
+
 # Schema registry
+# Maps SCIM schema URNs to their schema definitions for validation lookup.
+# Supports:
+# - Core SCIM 2.0 schemas (User, Group)
+# - Enterprise extension schema
+# - Agent extension schemas (Agent, AgenticApplication) from draft-abbey-scim-agent-extension-00
 SCHEMAS = {
     "urn:ietf:params:scim:schemas:core:2.0:User": CORE_USER_SCHEMA,
     "urn:ietf:params:scim:schemas:core:2.0:Group": CORE_GROUP_SCHEMA,
     "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": ENTERPRISE_USER_SCHEMA,
+    "urn:ietf:params:scim:schemas:core:2.0:Agent": CORE_AGENT_SCHEMA,
+    "urn:ietf:params:scim:schemas:core:2.0:AgenticApplication": CORE_AGENTIC_APPLICATION_SCHEMA,
 }
 
 def get_schema(urn: str):

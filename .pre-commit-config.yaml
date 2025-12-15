@@ -1,0 +1,37 @@
+# Pre-commit hook configuration for scim-sanity
+# See https://pre-commit.com for more information
+repos:
+  - repo: local
+    hooks:
+      - id: scim-sanity
+        name: Validate SCIM resources with scim-sanity
+        entry: python -m scim_sanity
+        language: system
+        types: [json]
+        exclude: |
+          (?x)^(
+            .*/node_modules/.*|
+            .*/\.venv/.*|
+            .*/venv/.*|
+            .*/ENV/.*|
+            .*/env/.*|
+            .*/\.tox/.*|
+            .*/dist/.*|
+            .*/build/.*|
+            .*package\.json$|
+            .*package-lock\.json$|
+            .*tsconfig.*\.json$|
+            .*jsconfig\.json$|
+            .*\.pre-commit-config\.yaml$|
+            .*\.gitignore$|
+            .*\.vscode/.*|
+            .*\.idea/.*|
+            .*\.pytest_cache/.*|
+            .*\.mypy_cache/.*|
+            .*\.coverage$|
+            .*coverage\.json$
+          )$
+        pass_filenames: true
+        require_serial: true
+        always_run: false
+        stages: [commit]

@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scim-sanity"
-version = "0.1.0"
-description = "A zero-dependency CLI tool for validating SCIM 2.0 User and Group payloads (RFC 7643/7644)"
+version = "0.2.0"
+description = "A zero-dependency CLI tool for validating SCIM 2.0 User, Group, Agent, and AgenticApplication payloads (RFC 7643/7644)"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {text = "MIT"}
 authors = [
     {name = "Thomas Betz", email = "thomas@seattlecodestudio.com"}
 ]
-keywords = ["scim", "scim2", "validation", "rfc7643", "rfc7644", "cli", "identity"]
+keywords = ["scim", "scim2", "validation", "rfc7643", "rfc7644", "cli", "identity", "agent", "agentic"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
