@@ -126,7 +126,7 @@ if HAS_CLICK:
     @click.argument("file", required=False, type=click.Path(exists=True))
     @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
     @click.option("--stdin", is_flag=True, help="Read JSON from stdin")
-    @click.version_option(version="0.2.0")
+    @click.version_option(version="0.2.1")
     def main(file: Optional[str], patch: bool, stdin: bool):
         """Validate SCIM 2.0 User, Group, Agent, and AgenticApplication payloads (RFC 7643/7644).
         

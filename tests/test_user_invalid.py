@@ -12,7 +12,7 @@ def test_user_missing_userName():
     validator = SCIMValidator()
     is_valid, errors = validator.validate(data)
     assert not is_valid
-    assert any("userName" in str(e).lower() for e in errors)
+    assert any("username" in str(e).lower() for e in errors)
 
 
 def test_user_missing_schemas():

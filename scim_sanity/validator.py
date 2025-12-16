@@ -20,7 +20,7 @@ class ValidationError:
 
 
 class SCIMValidator:
-    """Validates SCIM 2.0 User, Group, Agent, and Agentic Application resources and PATCH operations."""
+    """Validates SCIM 2.0 User, Group, Agent, and AgenticApplication resources and PATCH operations."""
     
     def __init__(self):
         self.errors: List[ValidationError] = []
