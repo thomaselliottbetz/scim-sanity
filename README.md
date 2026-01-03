@@ -1,6 +1,6 @@
 # scim-sanity
 
-SCIM 2.0 payload validation tool for pre-provisioning validation of User, Group, Agent, and AgenticApplication resources.
+SCIM 2.0 payload validation tool for pre-provisioning validation of User, Group, Agent, and AgenticApplication resources. Includes Ansible action plugin integration, identity provider guides (Entra ID, Google Workspace), and security compliance documentation (CIS and Microsoft Security Benchmarks).
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -50,6 +50,13 @@ echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user
 
 # Validate in CI/CD
 scim-sanity payload.json || exit 1
+
+# Validate in Ansible playbook
+- name: Validate SCIM payload
+  scim_validate:
+    payload: "{{ user_payload }}"
+    operation: full
+  register: validation_result
 ```
 
 ### Exit Codes
@@ -314,3 +321,8 @@ MIT License - see [LICENSE](LICENSE) file.
 - [RFC 7643 - SCIM: Core Schema](https://tools.ietf.org/html/rfc7643)
 - [RFC 7644 - SCIM: Protocol](https://tools.ietf.org/html/rfc7644)
 - [draft-abbey-scim-agent-extension-00](https://datatracker.ietf.org/doc/draft-abbey-scim-agent-extension/)
+- [CIS Microsoft Azure Foundations Benchmark](https://downloads.cisecurity.org/#/)
+- [CIS Google Workspace Benchmark](https://downloads.cisecurity.org/#/)
+- [Microsoft Cloud Security Benchmark](https://github.com/MicrosoftDocs/SecurityBenchmarks)
+- [Microsoft Entra ID SCIM Documentation](https://learn.microsoft.com/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups)
+- [Google Workspace SCIM API Documentation](https://developers.google.com/admin-sdk/directory/v1/guides/manage-users)
