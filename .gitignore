@@ -133,3 +133,13 @@ dmypy.json
 # Project specific
 broken.json2
 
+# CIS Benchmark reference materials (cannot be hosted per CIS licensing)
+docs/reference/cis-baselines/*.txt
+docs/reference/cis-baselines/*.md
+!docs/reference/cis-baselines/README.md
+
+# Microsoft Security Benchmarks (reference materials)
+docs/reference/microsoft-benchmarks/*.xlsx
+docs/reference/microsoft-benchmarks/*.csv
+docs/reference/microsoft-benchmarks/*.txt
+!docs/reference/microsoft-benchmarks/README.md

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-02
+
+### Added
+- **Ansible Action Plugin**: Added `scim_validate` action plugin for SCIM validation in Ansible playbooks
+  - Supports inline payloads and file paths
+  - Validates full resources and PATCH operations
+  - Returns structured validation results for conditional workflows
+- **Identity Management Integration Guides**: Added documentation for Microsoft Entra ID and Google Workspace integration
+  - Pre-provisioning validation workflows
+  - CI/CD integration examples
+  - Common SCIM operations and error handling
+- **Security and Compliance Documentation**: Added compliance guides referencing CIS and Microsoft Security Benchmarks
+  - CIS Azure Foundations Benchmark compliance
+  - CIS Google Workspace Benchmark compliance
+  - Microsoft Cloud Security Benchmark compliance
+  - Compliance validation workflows and reporting
+
+### Documentation
+- Added Ansible integration section to README
+- Added integration guides in `docs/integrations/`
+- Added security and compliance documentation in `docs/security/`
+- Added reference materials for CIS and Microsoft benchmarks in `docs/reference/`
+
 ## [0.2.1] - 2025-12-15
 
 ### Changed

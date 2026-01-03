@@ -1,0 +1,98 @@
+---
+# Example Ansible Playbook using scim_validate action plugin
+# This demonstrates how to validate SCIM payloads before provisioning
+
+- name: Validate SCIM Resources
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    # Example SCIM User payload
+    user_payload:
+      schemas:
+        - "urn:ietf:params:scim:schemas:core:2.0:User"
+      userName: "john.doe@example.com"
+      name:
+        givenName: "John"
+        familyName: "Doe"
+      emails:
+        - value: "john.doe@example.com"
+          type: "work"
+          primary: true
+      active: true
+    
+    # Example SCIM Group payload
+    group_payload:
+      schemas:
+        - "urn:ietf:params:scim:schemas:core:2.0:Group"
+      displayName: "Engineering Team"
+      members:
+        - value: "user-id-123"
+          display: "John Doe"
+          type: "User"
+    
+    # Example SCIM PATCH operation
+    patch_payload:
+      schemas:
+        - "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+      Operations:
+        - op: "replace"
+          path: "displayName"
+          value: "New Name"
+
+  tasks:
+    - name: Validate SCIM User payload
+      scim_validate:
+        payload: "{{ user_payload }}"
+        operation: full
+      register: user_validation
+
+    - name: Display user validation results
+      debug:
+        msg: "User validation: {{ 'PASSED' if user_validation.valid else 'FAILED' }}"
+      when: user_validation.valid
+
+    - name: Display user validation errors
+      debug:
+        var: user_validation.errors
+      when: not user_validation.valid
+
+    - name: Validate SCIM Group payload
+      scim_validate:
+        payload: "{{ group_payload }}"
+        operation: full
+      register: group_validation
+
+    - name: Display group validation results
+      debug:
+        msg: "Group validation: {{ 'PASSED' if group_validation.valid else 'FAILED' }}"
+
+    - name: Validate SCIM PATCH operation
+      scim_validate:
+        payload: "{{ patch_payload }}"
+        operation: patch
+      register: patch_validation
+
+    - name: Display patch validation results
+      debug:
+        msg: "PATCH validation: {{ 'PASSED' if patch_validation.valid else 'FAILED' }}"
+
+    - name: Validate SCIM payload from file
+      scim_validate:
+        file: "/path/to/scim-payload.json"
+        operation: full
+      register: file_validation
+      ignore_errors: yes
+
+    - name: Validate without failing on error
+      scim_validate:
+        payload: "{{ user_payload }}"
+        operation: full
+        fail_on_error: false
+      register: non_failing_validation
+
+    - name: Conditionally proceed based on validation
+      debug:
+        msg: "Proceeding with provisioning..."
+      when: user_validation.valid
+

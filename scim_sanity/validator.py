@@ -2,7 +2,7 @@
 
 import json
 from typing import List, Dict, Any, Optional, Tuple
-from .schemas import SCHEMAS, get_schema, get_attribute_def
+from .schemas import get_schema
 
 
 class ValidationError:
