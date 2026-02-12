@@ -1,6 +1,6 @@
 # Identity Provider Integration Guides
 
-This directory contains integration guides for using scim-sanity with various identity providers.
+This directory contains integration guides for using scim-sanity with various identity providers. Each guide covers payload validation (linting) and server conformance probing for User, Group, Agent, and AgenticApplication resource types.
 
 ## Available Guides
 
@@ -21,9 +21,7 @@ All integration guides demonstrate the same core pattern:
 
 Each guide includes examples for:
 - GitHub Actions workflows
-- GitLab CI pipelines
-- Jenkins integration
-- General CI/CD patterns
+- Shell-based validation-and-provision scripts
 
 ### Security and Compliance
 
@@ -42,7 +40,7 @@ All guides reference:
 
 ## See Also
 
-- [Main scim-sanity Documentation](../README.md)
-- [Ansible Integration](../ansible/README.md)
-- [Security and Compliance Documentation](../security/)
+- [Main scim-sanity Documentation](../../README.md)
+- [Ansible Integration](../../ansible/README.md)
+- [Security and Compliance Documentation](../security/compliance.md)
 

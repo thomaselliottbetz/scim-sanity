@@ -1,4 +1,9 @@
-"""scim-sanity: A zero-dependency CLI tool for validating SCIM 2.0 payloads."""
+"""scim-sanity: Zero-dependency CLI for SCIM 2.0 payload validation and server conformance probing.
 
-__version__ = "0.2.1"
+Validates User, Group, Agent, and AgenticApplication resources per RFC 7643/7644
+and draft-abbey-scim-agent-extension-00.  The ``probe`` subcommand tests live SCIM
+servers through a full CRUD lifecycle sequence.
+"""
+
+__version__ = "0.4.0"
 

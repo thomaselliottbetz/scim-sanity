@@ -4,7 +4,7 @@ This directory contains Ansible integration for validating SCIM 2.0 payloads usi
 
 ## Overview
 
-The Ansible Action Plugin allows you to validate SCIM resources directly in your Ansible playbooks, ensuring that SCIM payloads are correct before they're sent to identity providers like Microsoft Entra ID or Google Workspace.
+The Ansible Action Plugin allows you to validate SCIM resources directly in your Ansible playbooks, ensuring that SCIM payloads are correct before they're sent to identity providers like Microsoft Entra ID or Google Workspace. Supports User, Group, Agent, and AgenticApplication resource types.
 
 ## Installation
 
@@ -158,6 +158,7 @@ The Ansible Action Plugin allows you to validate SCIM resources directly in your
     method: POST
     headers:
       Authorization: "Bearer {{ entra_token }}"
+      Content-Type: "application/scim+json"
     body: "{{ entra_user_payload | to_json }}"
   when: validation.valid
 ```
@@ -177,9 +178,35 @@ The Ansible Action Plugin allows you to validate SCIM resources directly in your
     method: POST
     headers:
       Authorization: "Bearer {{ google_token }}"
+      Content-Type: "application/scim+json"
     body: "{{ google_user_payload | to_json }}"
   when: validation.valid
 ```
+
+## Server Conformance Probe
+
+scim-sanity also includes a `probe` subcommand that tests live SCIM servers for RFC 7643/7644 conformance. You can run it from Ansible using the `command` module:
+
+```yaml
+- name: Probe SCIM server for conformance
+  command: >
+    scim-sanity probe {{ scim_endpoint }}
+    --token {{ scim_token }}
+    --json-output
+    --i-accept-side-effects
+  register: probe_result
+
+- name: Parse probe results
+  set_fact:
+    probe_report: "{{ probe_result.stdout | from_json }}"
+
+- name: Fail if probe detected conformance issues
+  fail:
+    msg: "SCIM server has {{ probe_report.summary.failed }} conformance failures"
+  when: probe_report.summary.failed > 0
+```
+
+The probe creates, modifies, and deletes real test resources on the target server. The `--i-accept-side-effects` flag is required. See the main [scim-sanity documentation](../README.md) for full probe options.
 
 ## Error Handling
 

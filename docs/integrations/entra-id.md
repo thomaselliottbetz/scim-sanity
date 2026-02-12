@@ -11,6 +11,8 @@ Microsoft Entra ID uses SCIM 2.0 for automated user and group provisioning. Vali
 - Payloads conform to SCIM 2.0 standards
 - Security and compliance requirements are met
 
+scim-sanity supports User, Group, Agent, and AgenticApplication resource types, and includes a `probe` subcommand for testing live SCIM servers (see [Server Conformance Probe](#server-conformance-probe) below).
+
 ## Prerequisites
 
 - scim-sanity installed (`pip install scim-sanity`)
@@ -117,7 +119,7 @@ Always validate SCIM payloads before sending them to Entra ID:
 # validate-and-provision.sh
 
 PAYLOAD_FILE="user-payload.json"
-SCIM_ENDPOINT="https://graph.microsoft.com/v2/servicePrincipals/{id}/synchronization/jobs/{jobId}/schema"
+SCIM_ENDPOINT="${ENTRA_SCIM_ENDPOINT}"  # Your Entra ID SCIM provisioning endpoint
 
 # Validate payload
 if scim-sanity "$PAYLOAD_FILE"; then
@@ -151,7 +153,7 @@ jobs:
   validate-and-provision:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Install scim-sanity
         run: pip install scim-sanity
@@ -172,11 +174,10 @@ jobs:
 
 ### Missing Required Attributes
 
-**Invalid payload:**
+**Invalid payload** (missing `userName`):
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"]
-  // Missing userName - will fail validation
 }
 ```
 
@@ -187,12 +188,12 @@ jobs:
 
 ### Setting Immutable Attributes
 
-**Invalid payload:**
+**Invalid payload** (`id` is read-only and must not be set by the client):
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
   "userName": "user@example.com",
-  "id": "12345"  // ❌ Cannot set id - it's read-only
+  "id": "12345"
 }
 ```
 
@@ -203,12 +204,12 @@ jobs:
 
 ### Using Null Values
 
-**Invalid payload:**
+**Invalid payload** (use PATCH `remove` operation to clear attributes instead of `null`):
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
   "userName": "user@example.com",
-  "displayName": null  // ❌ Use PATCH remove instead
+  "displayName": null
 }
 ```
 
@@ -271,9 +272,23 @@ else
 fi
 ```
 
+## Server Conformance Probe
+
+In addition to payload validation, scim-sanity can probe your Entra ID SCIM endpoint for RFC 7643/7644 conformance:
+
+```bash
+scim-sanity probe $ENTRA_SCIM_ENDPOINT \
+    --token $ENTRA_TOKEN \
+    --i-accept-side-effects
+```
+
+The probe runs a full CRUD lifecycle test (create, read, update, delete) against the server and reports conformance issues. Use `--compat` mode for lenient checking of known real-world deviations, or `--json-output` for machine-readable results.
+
+Note: The probe creates and deletes real test resources (prefixed with `scim-sanity-test-`). The `--i-accept-side-effects` flag is required. See the main [README](../../README.md) for full probe options.
+
 ## Using with Ansible
 
-See the [Ansible Integration Guide](../ansible/README.md) for using scim-sanity validation in Ansible playbooks with Entra ID.
+See the [Ansible Integration Guide](../../ansible/README.md) for using scim-sanity validation in Ansible playbooks with Entra ID.
 
 ## References
 
