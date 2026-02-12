@@ -274,15 +274,15 @@ fi
 
 ## Server Conformance Probe
 
-In addition to payload validation, scim-sanity can probe your Entra ID SCIM endpoint for RFC 7643/7644 conformance:
+Entra ID acts as a **SCIM client** — it pushes provisioning data to your application's SCIM server endpoint. The scim-sanity probe tests **SCIM server** conformance, so you point it at the application endpoint that Entra ID provisions to (not at Entra ID itself):
 
 ```bash
-scim-sanity probe $ENTRA_SCIM_ENDPOINT \
-    --token $ENTRA_TOKEN \
+scim-sanity probe $APP_SCIM_ENDPOINT \
+    --token $APP_SCIM_TOKEN \
     --i-accept-side-effects
 ```
 
-The probe runs a full CRUD lifecycle test (create, read, update, delete) against the server and reports conformance issues. Use `--compat` mode for lenient checking of known real-world deviations, or `--json-output` for machine-readable results.
+The probe runs a full CRUD lifecycle test (create, read, update, delete) against the application's SCIM server and reports RFC 7643/7644 conformance issues. Use `--compat` mode for lenient checking of known real-world deviations, or `--json-output` for machine-readable results.
 
 Note: The probe creates and deletes real test resources (prefixed with `scim-sanity-test-`). The `--i-accept-side-effects` flag is required. See the main [README](../../README.md) for full probe options.
 
