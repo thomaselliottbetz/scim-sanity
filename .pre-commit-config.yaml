@@ -34,4 +34,4 @@ repos:
         pass_filenames: true
         require_serial: true
         always_run: false
-        stages: [commit]
+        stages: [pre-commit]
