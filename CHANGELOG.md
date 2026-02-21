@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-19
+
+### Added
+- **Transient 500 detection**: When a POST returns 500, the probe retries once after a brief delay using identical request headers. If the retry succeeds, the result is emitted as a `WARN` ("transient instability") and the CRUD lifecycle continues with the retry response, giving a full conformance picture despite the initial failure. If both attempts fail, content-type rejection diagnosis runs next.
+- **Content-Type request rejection diagnosis**: When a POST consistently returns 500, the probe retries with `Content-Type: application/json`. If that succeeds, the failure is reported as a `FAIL` with a specific RFC 7644 §8.2 citation: *"Server rejected Content-Type: application/scim+json but accepted application/json"*. Any resource created during diagnosis is cleaned up immediately.
+- `extra_headers` parameter on `SCIMClient.post()`, consistent with `put()` and `patch()`.
+
+### Fixed
+- **False positive on Group PATCH verification**: The `active=false` PATCH follow-up GET check incorrectly applied to Group resources. `active` is not a Group attribute per RFC 7643 §4.2, so a conformant server that doesn't store it on Groups was incorrectly reported as failing. For Groups, the follow-up GET now only verifies the server responds 200; the `active` field check is correctly limited to resource types that define it (User, Agent, AgenticApplication).
+
+### Changed
+- **Error response cascade noise suppression**: When `validate_resource_response` receives a 4xx or 5xx status, it now returns after reporting only the unexpected status code. Previously, predictable side-effects of an error response (missing `id`, `meta`, `schemas`) were reported as additional failures, obscuring the root cause.
+- **Phase 7 400 error response validation**: The "invalid body" and "missing userName" error handling tests now validate the full SCIM error response schema (schema URN, `status` field) in addition to checking the HTTP status code, consistent with the existing 404 test. Servers that return unstructured 400 bodies are now correctly flagged.
+
+## [0.4.0] - 2026-01-15
+
+### Added
+- **Server conformance probe** (`scim-sanity probe`): 7-phase live SCIM server testing via real CRUD, search, and error-handling flows
+  - Phase 1: Discovery — GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`
+  - Phase 2–5: User, Group, Agent, AgenticApplication CRUD lifecycles (POST→GET→PUT→PATCH→DELETE→404)
+  - Phase 5a: Agent rapid lifecycle — create and immediately delete multiple agents to test ephemeral provisioning
+  - Phase 6: Search — ListResponse structure, filter queries, pagination, `count=0` boundary case
+  - Phase 7: Error handling — 404 on nonexistent resource, 400 on invalid body, 400 on missing required fields
+- **Strict and compat validation modes** — strict (default) treats all RFC deviations as failures; compat mode downgrades known real-world deviations (wrong Content-Type, missing Location header, ETag mismatch, DELETE body) to warnings
+- **JSON output** (`--json-output`) with stable schema for CI/CD integration
+- **Resource type filtering** (`--resource`) to test a single resource type
+- **TLS options**: `--tls-no-verify` and `--ca-bundle` for self-signed certificate environments
+- **Proxy support** via `--proxy`
+- **Authorization header redaction** in JSON output and logs
+
 ## [0.3.0] - 2026-01-02
 
 ### Added

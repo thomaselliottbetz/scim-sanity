@@ -131,6 +131,7 @@ The probe implements several safety measures to prevent accidental damage:
 - **Namespace isolation** — All test resources are prefixed with `scim-sanity-test-` to avoid collisions with real data.
 - **Resource caps** — Hard limit of 10 agents in rapid lifecycle tests.
 - **429 retry** — Automatically retries on 429 Too Many Requests, honoring `Retry-After` headers (max 3 retries).
+- **500 transience detection** — When a POST returns 500, the probe retries once after a brief delay using the same request headers. If the retry succeeds, the result is recorded as a warning ("transient instability") and the CRUD lifecycle continues with the resource created by the retry. If both attempts fail, content-type rejection diagnosis runs before reporting the final failure.
 - **Timeouts** — Per-request timeouts prevent hung runs.
 - **Cleanup** — Deletes all created test resources in reverse order (groups before users). Skippable with `--skip-cleanup`.
 - **Failure semantics** — If the process is interrupted, partial cleanup may occur; orphaned test resources are possible and should be removed manually.
@@ -163,6 +164,11 @@ Current compat warnings include:
 
 Warnings appear in output but don't cause a non-zero exit code.
 
+**Always failures (not compat-eligible):** Some deviations are reported as `FAIL` in both strict and compat mode because they fundamentally break RFC-compliant clients:
+- Server rejects `Content-Type: application/scim+json` requests (e.g., with 500) but accepts `application/json` — diagnosed automatically and cited against RFC 7644 §8.2.
+
+**Error response reporting:** When a server returns a 4xx or 5xx status for a resource endpoint, only the unexpected status code is reported. Predictable side-effects (missing `id`, `meta`, `schemas` in the error body) are suppressed to avoid obscuring the root cause with cascade noise.
+
 #### Real-World Server Behavior
 
 Enterprise SCIM servers often exhibit:
@@ -181,7 +187,7 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "mode": "compat",
   "summary": {
     "total": 35,

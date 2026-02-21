@@ -105,9 +105,10 @@ class SCIMClient:
         """Send a GET request to the SCIM endpoint."""
         return self._request("GET", path)
 
-    def post(self, path: str, payload: Dict[str, Any]) -> SCIMResponse:
+    def post(self, path: str, payload: Dict[str, Any],
+             extra_headers: Optional[Dict[str, str]] = None) -> SCIMResponse:
         """Send a POST request with a JSON payload."""
-        return self._request("POST", path, payload)
+        return self._request("POST", path, payload, extra_headers=extra_headers)
 
     def put(self, path: str, payload: Dict[str, Any],
             extra_headers: Optional[Dict[str, str]] = None) -> SCIMResponse:

@@ -251,7 +251,7 @@ if HAS_CLICK:
                   help="SCIM JSON file to validate", hidden=True)
     @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
     @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-    @click.version_option(version="0.4.0")
+    @click.version_option(version="0.5.0")
     @click.pass_context
     def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
         """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).

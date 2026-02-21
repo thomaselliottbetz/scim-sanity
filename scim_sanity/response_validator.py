@@ -106,6 +106,11 @@ class ServerResponseValidator:
             errors.append(ServerValidationError(
                 f"Expected HTTP {expected_status}, got {actual_status}"
             ))
+            # If the server returned an error status, skip SCIM field validation —
+            # missing id/meta/schemas are predictable consequences of the error,
+            # not independent conformance issues worth reporting separately
+            if actual_status >= 400:
+                return self._is_valid(errors), errors
 
         if data is None:
             if expected_status != 204:
