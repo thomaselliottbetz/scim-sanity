@@ -51,6 +51,8 @@ def run_probe(
     accept_side_effects: bool = False,
     timeout: int = 30,
     rapid_agent_count: int = MAX_RAPID_AGENTS,
+    proxy: Optional[str] = None,
+    ca_bundle: Optional[str] = None,
 ) -> int:
     """Run the full conformance probe and return an exit code.
 
@@ -86,6 +88,8 @@ def run_probe(
         password=password,
         tls_no_verify=tls_no_verify,
         timeout=timeout,
+        proxy=proxy,
+        ca_bundle=ca_bundle,
     )
 
     rv = ServerResponseValidator(strict=strict)

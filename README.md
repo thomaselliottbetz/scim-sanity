@@ -15,7 +15,7 @@ Validate SCIM 2.0 payloads (static linting) and probe live SCIM servers for RFC 
 - **Strict and compat modes** — Strict mode (default) treats all spec deviations as failures. Compat mode downgrades known real-world deviations (e.g., `application/json` instead of `application/scim+json`) to warnings.
 - It performs **behavioral, black-box testing** of SCIM servers via real CRUD, search, and lifecycle flows.
 - It focuses on high-value, real-world failure modes and interoperability gaps. It is designed to **surface real-world integration failures**, not to provide formal certification or exhaustive proof of RFC compliance.
-- **Zero runtime dependencies** — Uses only Python stdlib. Click and requests are optional enhancements detected at import time.
+- **Minimal dependencies** — Requires only Click. The `requests` library is auto-detected and used when available for richer HTTP handling, but is not required.
 
 ## Installation
 

@@ -1,9 +1,8 @@
 """Thin HTTP abstraction for talking to SCIM servers.
 
 Uses ``requests`` if installed, otherwise falls back to ``urllib.request``
-from stdlib.  This mirrors the Click fallback pattern used in cli.py —
-zero runtime dependencies, but better ergonomics when optional packages
-are available.
+from stdlib.  The ``requests`` library is optional — if not installed, all
+HTTP operations use stdlib only with no loss of functionality.
 
 Key behaviors:
 - Automatic 429 Too Many Requests retry with Retry-After header support
