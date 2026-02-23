@@ -1,6 +1,6 @@
 # scim-sanity
 
-Validate SCIM 2.0 payloads (static linting) and probe live SCIM servers for RFC 7643/7644 conformance. Supports User, Group, Agent, and AgenticApplication resources, including agentic identity types per `draft-abbey-scim-agent-extension-00`.
+Find out exactly where your SCIM server deviates from RFC 7643/7644 — before client integrations fail in production. Also validates SCIM payloads statically before they reach a server. Supports User, Group, Agent, and AgenticApplication resources, including agentic identity types per `draft-abbey-scim-agent-extension-00`.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,12 +9,11 @@ Validate SCIM 2.0 payloads (static linting) and probe live SCIM servers for RFC 
 ## Features
 
 **scim-sanity** is a **pragmatic, production-oriented SCIM conformance and interoperability harness**:
-- **Payload validation (linting)** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
 - **Server conformance probe** — Run a 7-phase CRUD lifecycle test against a live SCIM endpoint. Tests discovery, User/Group/Agent/AgenticApplication operations, search, pagination, and error handling.
+- **Payload validation (linting)** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
 - **Agentic identity support** — Validates Agent and AgenticApplication resources per IETF `draft-abbey-scim-agent-extension-00`.
 - **Strict and compat modes** — Strict mode (default) treats all spec deviations as failures. Compat mode downgrades known real-world deviations (e.g., `application/json` instead of `application/scim+json`) to warnings.
-- It performs **behavioral, black-box testing** of SCIM servers via real CRUD, search, and lifecycle flows.
-- It focuses on high-value, real-world failure modes and interoperability gaps. It is designed to **surface real-world integration failures**, not to provide formal certification or exhaustive proof of RFC compliance.
+- **Behavioral, black-box testing** — Tests servers via real CRUD, search, and lifecycle flows against the failure modes that break real integrations.
 - **Minimal dependencies** — Requires only Click. The `requests` library is auto-detected and used when available for richer HTTP handling, but is not required.
 
 ## Installation
@@ -32,45 +31,6 @@ python -m venv venv
 source venv/bin/activate
 pip install -e ".[dev]"
 ```
-
-## Payload Validation (Linting)
-
-Statically validate (lint) SCIM resource payloads and PATCH operations before sending them to a server. Resource type is auto-detected from schema URNs. This is a spec-driven validator with linter-style ergonomics: fast, offline, and suitable for CI/CD gating.
-
-```bash
-# Validate a resource file
-scim-sanity user.json
-
-# Validate a PATCH operation
-scim-sanity --patch patch.json
-
-# Validate from stdin
-echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user@example.com"}' | scim-sanity --stdin
-
-# Use in CI/CD pipelines
-scim-sanity payload.json || exit 1
-```
-
-### Validation Rules
-
-**Required attributes:**
-- User: `userName`
-- Group: `displayName`
-- Agent: `name`
-- AgenticApplication: `name`
-
-**What it checks:**
-- Schema URN validity and presence
-- Required attributes per resource type
-- Immutable attributes (`id`, `meta`) not set by client
-- Null values (use PATCH `remove` instead)
-- PATCH operation structure (`op`, `path`, `value` correctness)
-- Complex and multi-valued attribute structure
-
-### Exit Codes
-
-- `0` — Validation passed (or all probe tests passed)
-- `1` — Validation failed, probe failures detected, or error
 
 ## Server Conformance Probe
 
@@ -145,8 +105,8 @@ The probe runs 7 phases:
 2. **User CRUD Lifecycle** — POST (201), GET (200), PUT (200 + verify change), PATCH active=false (200 + verify), DELETE (204), GET (404).
 3. **Group CRUD Lifecycle** — Same pattern as User, plus PATCH add/remove members.
 4. **Agent CRUD Lifecycle** — Same pattern. Skipped if server doesn't advertise Agent support in `/ResourceTypes`.
+   - **Agent Rapid Lifecycle** — Create and immediately delete multiple agents (default 10) to test ephemeral provisioning patterns.
 5. **AgenticApplication CRUD Lifecycle** — Same pattern. Skipped if unsupported.
-5a. **Agent Rapid Lifecycle** — Create and immediately delete multiple agents (default 10) to test ephemeral provisioning patterns.
 6. **Search** — ListResponse structure, filter queries, pagination parameters, `count=0` boundary case. Content-Type is validated on list responses per RFC 7644 §8.1.
 7. **Error Handling** — GET nonexistent resource (expect 404), POST invalid body (expect 400), POST missing required fields (expect 400). Validates SCIM error response schema.
 
@@ -225,75 +185,98 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 The JSON schema is treated as a public interface and is stable within major versions.
 
+## Payload Validation (Linting)
+
+Statically validate (lint) SCIM resource payloads and PATCH operations before sending them to a server. Resource type is auto-detected from schema URNs. This is a spec-driven validator with linter-style ergonomics: fast, offline, and suitable for CI/CD gating.
+
+```bash
+# Validate a resource file
+scim-sanity user.json
+
+# Validate a PATCH operation
+scim-sanity --patch patch.json
+
+# Validate from stdin
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user@example.com"}' | scim-sanity --stdin
+
+# Use in CI/CD pipelines
+scim-sanity payload.json || exit 1
+```
+
+### Validation Rules
+
+**Required attributes:**
+- User: `userName`
+- Group: `displayName`
+- Agent: `name`
+- AgenticApplication: `name`
+
+**What it checks:**
+- Schema URN validity and presence
+- Required attributes per resource type
+- Immutable attributes (`id`, `meta`) not set by client
+- Null values (use PATCH `remove` instead)
+- PATCH operation structure (`op`, `path`, `value` correctness)
+- Complex and multi-valued attribute structure
+
+### Exit Codes
+
+- `0` — Validation passed (or all probe tests passed)
+- `1` — Validation failed, probe failures detected, or error
+
 ## Payload Examples
 
-### Valid User Resource
+### What the linter catches
+
+Given a payload with a missing required field and a client-set immutable attribute:
 
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-  "userName": "john.doe@example.com",
-  "name": {
-    "givenName": "John",
-    "familyName": "Doe"
-  },
-  "emails": [
-    {
-      "value": "john.doe@example.com",
-      "type": "work",
-      "primary": true
-    }
-  ],
-  "active": true
+  "id": "123",
+  "name": {"givenName": "John"}
 }
 ```
 
-### Valid Group Resource
+```
+Found 3 error(s):
 
+❌ Missing required attribute: 'userName' (schema: urn:ietf:params:scim:schemas:core:2.0:User) at userName
+❌ User resource missing required attribute: 'userName'
+❌ Immutable attribute 'id' should not be set by client (mutability: readOnly) at id
+```
+
+### Minimal valid examples
+
+**User**
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+  "userName": "john.doe@example.com"
+}
+```
+
+**Group**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
-  "displayName": "Engineering Team",
-  "members": [
-    {
-      "value": "user-id-123",
-      "display": "John Doe",
-      "type": "User"
-    }
-  ]
+  "displayName": "Engineering Team"
 }
 ```
 
-### Valid Agent Resource
-
+**Agent**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
-  "name": "research-assistant"
+  "name": "automation-agent"
 }
 ```
 
-### Valid AgenticApplication Resource
-
-```json
-{
-  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],
-  "name": "assistant-platform"
-}
-```
-
-### Valid PATCH Operation
-
+**PATCH operation**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-  "Operations": [
-    {
-      "op": "replace",
-      "path": "displayName",
-      "value": "New Name"
-    }
-  ]
+  "Operations": [{"op": "replace", "path": "displayName", "value": "New Name"}]
 }
 ```
 
