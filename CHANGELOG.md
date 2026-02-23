@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-02-23
+
+### Added
+- **Fix Summary** in terminal output: when failures are present, a prioritised block lists each distinct root cause with `Trouble:`, `Fix:`, and `Rationale:` labels, grouping related failures to reduce noise
+- **`issues` array in JSON output**: machine-readable equivalent of the Fix Summary, with `priority`, `title`, `fix`, and `rationale` fields per issue
+- **Content-Type validation on list responses**: `validate_list_response` now checks `Content-Type: application/scim+json` on ListResponse replies, consistent with all other response validators
+
+### Changed
+- Terminal output color scheme: removed green/yellow/cyan ANSI colors; PASS is bold, WARN/SKIP are dim, FAIL remains red — reduces visual noise on varied terminal themes
+- Documentation substantially revised: README reordered to lead with probe; integration guides (Entra ID, Google Workspace) corrected for SCIM client/server framing; compliance docs rewritten to remove unsupported CIS/MCSB control mapping claims
+
 ## [0.5.1] - 2026-02-21
 
 ### Fixed

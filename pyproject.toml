@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "scim-sanity"
 version = "0.5.2"
-description = "A CLI tool for validating SCIM 2.0 User, Group, Agent, and AgenticApplication payloads (RFC 7643/7644)"
+description = "Live SCIM server conformance testing and payload validation (RFC 7643/7644)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

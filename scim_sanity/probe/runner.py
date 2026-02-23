@@ -73,6 +73,8 @@ def run_probe(
                               and deletes real resources on the target server.
         timeout:              Per-request timeout in seconds.
         rapid_agent_count:    Number of agents for rapid lifecycle test (capped).
+        proxy:                HTTP/HTTPS proxy URL (e.g. ``"http://proxy.example.com:8080"``).
+        ca_bundle:            Path to a CA bundle file for TLS certificate verification.
     """
     # --- Safety gate: require explicit consent before running ----------------
     if not accept_side_effects:
