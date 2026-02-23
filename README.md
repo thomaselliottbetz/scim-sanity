@@ -147,7 +147,7 @@ The probe runs 7 phases:
 4. **Agent CRUD Lifecycle** — Same pattern. Skipped if server doesn't advertise Agent support in `/ResourceTypes`.
 5. **AgenticApplication CRUD Lifecycle** — Same pattern. Skipped if unsupported.
 5a. **Agent Rapid Lifecycle** — Create and immediately delete multiple agents (default 10) to test ephemeral provisioning patterns.
-6. **Search** — ListResponse structure, filter queries, pagination parameters, `count=0` boundary case.
+6. **Search** — ListResponse structure, filter queries, pagination parameters, `count=0` boundary case. Content-Type is validated on list responses per RFC 7644 §8.1.
 7. **Error Handling** — GET nonexistent resource (expect 404), POST invalid body (expect 400), POST missing required fields (expect 400). Validates SCIM error response schema.
 
 ### Strict vs Compat Mode
@@ -179,6 +179,19 @@ Enterprise SCIM servers often exhibit:
 
 scim-sanity attempts to behave accordingly by retrying on 429, validating boundary cases, and clearly reporting unsupported or nonconformant behavior.
 
+### Fix Summary
+
+When failures are present, the probe appends a prioritised **Fix Summary** after the results. Each entry has three lines:
+
+```
+  [P1] Trouble: Wrong Content-Type on SCIM responses (12 tests affected)
+       Fix: Set Content-Type: application/scim+json on all responses served from /scim/v2/
+       Rationale: Compliant clients inspect Content-Type before parsing — every response
+                  is rejected regardless of whether the body is otherwise correct.
+```
+
+Issues are ordered by severity (P1 most critical). The fix summary is omitted when all tests pass. In JSON output mode, the same information is available as an `issues` array (see below).
+
 ### JSON Output (Stable Interface)
 
 ```bash
@@ -187,22 +200,29 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "version": "0.5.0",
-  "mode": "compat",
   "summary": {
-    "total": 35,
-    "passed": 33,
-    "failed": 0,
-    "warnings": 2,
-    "skipped": 0,
+    "total": 32,
+    "passed": 14,
+    "failed": 15,
+    "warnings": 0,
+    "skipped": 3,
     "errors": 0
   },
+  "issues": [
+    {
+      "priority": "P1",
+      "title": "Wrong Content-Type on SCIM responses",
+      "rationale": "Compliant clients inspect Content-Type before parsing — every response is rejected regardless of whether the body is otherwise correct.",
+      "fix": "Set Content-Type: application/scim+json on all responses served from /scim/v2/",
+      "affected_tests": 12
+    }
+  ],
   "results": [
-    {"name": "GET /ServiceProviderConfig", "status": "pass", "phase": "Phase 1 — Discovery"},
-    {"name": "GET /ServiceProviderConfig", "status": "warn", "message": "Content-Type should be application/scim+json, got 'application/json'", "phase": "Phase 1 — Discovery"}
+    {"name": "GET /ServiceProviderConfig", "status": "fail", "message": "Content-Type should be application/scim+json, got 'text/html; charset=utf-8'", "phase": "Phase 1 — Discovery"}
   ]
 }
 ```
+
 The JSON schema is treated as a public interface and is stable within major versions.
 
 ## Payload Examples

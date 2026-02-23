@@ -223,6 +223,23 @@ class ServerResponseValidator:
             errors.append(ServerValidationError("Response body is empty"))
             return False, errors
 
+        # Content-Type: application/scim+json is required by spec (RFC 7644 §8.1),
+        # including on list responses — no exemption for ListResponse envelopes
+        if headers:
+            ct = _header_value(headers, "Content-Type")
+            if ct:
+                if "application/scim+json" in ct:
+                    pass  # correct per spec
+                elif "application/json" in ct:
+                    errors.append(ServerValidationError(
+                        f"Content-Type should be application/scim+json, got '{ct}'",
+                        severity=self._sev(is_strict_only=True),
+                    ))
+                else:
+                    errors.append(ServerValidationError(
+                        f"Content-Type should be application/scim+json, got '{ct}'"
+                    ))
+
         # Must include the ListResponse schema URN
         schemas = data.get("schemas", [])
         if "urn:ietf:params:scim:api:messages:2.0:ListResponse" not in schemas:
