@@ -1,46 +1,14 @@
 # Identity Provider Integration Guides
 
-This directory contains integration guides for using scim-sanity with various identity providers. Each guide covers payload validation (linting) and server conformance probing for User, Group, Agent, and AgenticApplication resource types.
+Integration guides for using scim-sanity with identity providers. Each guide covers the SCIM client/server relationship for that IdP, what the IdP sends in its provisioning payloads, server conformance probing, and payload linting.
 
 ## Available Guides
 
-- **[Microsoft Entra ID Integration](./entra-id.md)** - Validate SCIM payloads for Entra ID provisioning
-- **[Google Workspace Integration](./google-workspace.md)** - Validate SCIM payloads for Google Workspace provisioning
-
-## Common Patterns
-
-### Pre-Provisioning Validation
-
-All integration guides demonstrate the same core pattern:
-
-1. **Validate** SCIM payloads with scim-sanity
-2. **Provision** only if validation passes
-3. **Handle errors** gracefully
-
-### CI/CD Integration
-
-Each guide includes examples for:
-- GitHub Actions workflows
-- Shell-based validation-and-provision scripts
-
-### Security and Compliance
-
-All guides reference:
-- CIS Benchmark controls
-- Security best practices
-- Compliance requirements
-- Common mistakes and how to avoid them
-
-## Getting Started
-
-1. Choose your identity provider guide
-2. Review the common SCIM operations
-3. Follow the validation workflow examples
-4. Integrate into your provisioning pipeline
+- **[Microsoft Entra ID](./entra-id.md)** — Entra ID acts as a SCIM client, provisioning users to your application's SCIM server. Covers probing your server for Entra ID compatibility, the Enterprise User extension, and the `externalId` correlation pattern.
+- **[Google Workspace](./google-workspace.md)** — Google Workspace can act as either a SCIM client (provisioning to your app) or a SCIM server (receiving from an external IdP via Cloud Identity SCIM). Covers both scenarios.
 
 ## See Also
 
 - [Main scim-sanity Documentation](../../README.md)
 - [Ansible Integration](../../ansible/README.md)
 - [Security and Compliance Documentation](../security/compliance.md)
-
