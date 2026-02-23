@@ -1,244 +1,28 @@
 # Security and Compliance with scim-sanity
 
-This guide demonstrates how scim-sanity supports compliance with security frameworks and benchmarks, including CIS Benchmarks and Microsoft Security Benchmarks.
+scim-sanity contributes to a compliant identity provisioning pipeline in specific, narrow ways. This document describes what the tool actually does and does not do in a compliance context, and provides practical workflows for integrating it into audit and CI/CD processes.
 
-## Overview
+## What scim-sanity Actually Contributes
 
-Validating SCIM payloads before provisioning to identity providers helps ensure compliance with security standards by:
+**Payload structural correctness** — The linter ensures that SCIM resources sent to or received from a SCIM server are well-formed: required attributes are present, read-only attributes are not set by the client, null values are not used where PATCH remove is required, and schema URNs are correct. Structurally malformed provisioning payloads are a common source of silent failures in identity pipelines.
 
-- Ensuring required security attributes are present
-- Preventing invalid configurations that could bypass security controls
-- Validating role assignments follow least privilege principles
-- Supporting audit and compliance workflows
+**Deprovisioning correctness** — The linter validates that PATCH operations used to deactivate accounts (`active: false`) are properly structured. A malformed deprovisioning operation that silently fails is a compliance risk.
 
-## CIS Benchmark Compliance
+**Audit trail capability** — The server probe detects whether a SCIM server returns `meta.created` and `meta.lastModified` timestamps. These fields are the foundation of incremental sync and provisioning audit trails. A server that omits them cannot support time-correlated audit logging without additional instrumentation.
 
-### CIS Microsoft Azure Foundations Benchmark
+**writeOnly attribute enforcement** — The probe detects whether a SCIM server incorrectly returns writeOnly attributes (such as passwords) in responses, which would constitute a credential exposure.
 
-scim-sanity supports compliance with the [CIS Microsoft Azure Foundations Benchmark v5.0.0](https://downloads.cisecurity.org/#/), particularly Section 5: Identity Services.
+**What scim-sanity does not do** — It does not enforce access control policies, manage role assignments, configure MFA, enforce conditional access, or prevent any action at the identity provider level. Claims beyond structural payload validation and server conformance testing are outside the tool's scope.
 
-#### Section 5.3: Periodic Identity Reviews
+---
 
-**Control 5.3.2: Ensure that guest users are reviewed on a regular basis**
+## CI/CD Integration
 
-SCIM validation ensures guest user provisioning payloads are properly structured:
-
-```bash
-# Validate guest user payload before provisioning
-scim-sanity guest-user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates guest user SCIM payloads contain required attributes
-- Ensures proper user type classification
-- Prevents invalid guest user configurations
-
-**Control 5.3.4: Ensure that all 'privileged' role assignments are periodically reviewed**
-
-SCIM validation ensures role assignment payloads are valid:
-
-```bash
-# Validate role assignment PATCH operation
-scim-sanity --patch role-assignment-patch.json
-```
-
-**How scim-sanity supports this control:**
-- Validates PATCH operations for role assignments
-- Ensures proper role assignment structure
-- Prevents invalid role modifications
-
-**Control 5.3.5: Ensure disabled user accounts do not have read, write, or owner permissions**
-
-SCIM validation ensures account status changes are properly structured:
-
-```bash
-# Validate account deactivation payload
-scim-sanity --patch deactivate-user-patch.json
-```
-
-**How scim-sanity supports this control:**
-- Validates account status change operations
-- Ensures proper PATCH structure for deactivation
-- Prevents invalid status modifications
-
-#### Section 5.1 & 5.2: Security Defaults and Conditional Access
-
-**Control 5.1.2 / 5.2.4: Ensure multifactor authentication is enabled**
-
-SCIM validation ensures user provisioning payloads are structured correctly for MFA requirements:
-
-```bash
-# Validate user payload before provisioning (MFA will be enforced by Entra ID)
-scim-sanity user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates user provisioning payloads are correct
-- Ensures users are provisioned with proper attributes
-- Prevents provisioning errors that could bypass MFA requirements
-
-### CIS Google Workspace Benchmark
-
-scim-sanity supports compliance with the [CIS Google Workspace Benchmark](https://downloads.cisecurity.org/#/), particularly Section 1: Directory and Section 4: Security.
-
-#### Section 1.1: Users
-
-**Control 1.1.1-1.1.3: Super Admin account management**
-
-SCIM validation ensures admin user provisioning follows security requirements:
-
-```bash
-# Validate admin user payload
-scim-sanity admin-user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates admin user provisioning payloads
-- Ensures proper user account structure
-- Prevents invalid admin account configurations
-
-#### Section 4.1: Authentication
-
-**Control 4.1.1.1: Ensure 2-Step Verification is enforced for all users in administrative roles**
-
-SCIM validation ensures users are provisioned correctly for 2SV requirements:
-
-```bash
-# Validate user payload for admin role
-scim-sanity admin-user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates user provisioning payloads are structured correctly
-- Ensures users can be properly enrolled in 2SV
-- Prevents provisioning errors
-
-#### Section 4.2.1: API Controls
-
-**Control 4.2.1.3: Ensure internal apps can access Google Workspace APIs**
-
-SCIM validation ensures SCIM API usage is properly structured:
-
-```bash
-# Validate SCIM payload before API call
-scim-sanity user-payload.json && \
-  curl -X POST "$GOOGLE_SCIM_ENDPOINT/Users" \
-    -H "Authorization: Bearer $TOKEN" \
-    -d @user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates SCIM API payloads before sending
-- Ensures proper API usage structure
-- Prevents invalid API calls
-
-## Microsoft Security Benchmark Compliance
-
-scim-sanity supports compliance with the [Microsoft Cloud Security Benchmark](https://github.com/MicrosoftDocs/SecurityBenchmarks), particularly Identity Management controls.
-
-### Identity Management (IM-*) Controls
-
-**IM-1: Use centralized identity and authentication system**
-
-SCIM validation ensures centralized identity provisioning:
-
-```bash
-# Validate user payload for centralized provisioning
-scim-sanity user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates SCIM payloads used for centralized identity provisioning
-- Ensures proper user account structure
-- Prevents local account creation by validating centralized provisioning
-
-**IM-3: Manage application identities securely and automatically**
-
-SCIM validation ensures application identity provisioning is correct:
-
-```bash
-# Validate service principal or managed identity provisioning
-scim-sanity app-identity-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates application identity provisioning payloads
-- Ensures proper service principal structure
-- Supports automated identity management workflows
-
-**IM-7: Restrict resource access based on conditions**
-
-SCIM validation ensures conditional access policies are properly applied:
-
-```bash
-# Validate user payload (conditional access applied by Entra ID)
-scim-sanity user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates user provisioning payloads are correct
-- Ensures users can be properly subject to conditional access policies
-- Prevents provisioning errors that could bypass conditional access
-
-**IM-8: Restrict the exposure of credential and secrets**
-
-SCIM validation ensures credential management is secure:
-
-```bash
-# Validate user payload (credentials managed securely)
-scim-sanity user-payload.json
-```
-
-**How scim-sanity supports this control:**
-- Validates user provisioning payloads don't expose credentials
-- Ensures proper credential management structure
-- Prevents insecure credential handling
-
-### Privileged Access (PA-*) Controls
-
-**PA-7: Follow just enough administration (least privilege) principle**
-
-SCIM validation ensures role assignments follow least privilege:
-
-```bash
-# Validate role assignment PATCH operation
-scim-sanity --patch role-assignment-patch.json
-```
-
-**How scim-sanity supports this control:**
-- Validates role assignment operations
-- Ensures proper RBAC structure
-- Prevents invalid role assignments that could violate least privilege
-
-## Compliance Validation Workflows
-
-### Pre-Provisioning Validation
-
-Always validate SCIM payloads before provisioning to ensure compliance:
-
-```bash
-#!/usr/bin/env bash
-# compliance-validation.sh
-
-PAYLOAD_FILE="$1"
-
-# Validate payload
-if scim-sanity "$PAYLOAD_FILE"; then
-    echo "✅ SCIM payload validated - compliant with security requirements"
-    # Proceed with provisioning
-else
-    echo "❌ SCIM payload validation failed - not compliant"
-    exit 1
-fi
-```
-
-### CI/CD Compliance Checks
-
-Integrate validation into CI/CD pipelines for automated compliance:
+Validate SCIM payloads as part of your pipeline to catch structural errors before they reach a SCIM server:
 
 ```yaml
 # .github/workflows/compliance-check.yml
-name: SCIM Compliance Validation
+name: SCIM Payload Validation
 
 on:
   pull_request:
@@ -246,92 +30,84 @@ on:
       - 'scim-payloads/**'
 
 jobs:
-  validate-compliance:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Install scim-sanity
         run: pip install scim-sanity
-      
+
       - name: Validate all SCIM payloads
         run: |
           for file in scim-payloads/**/*.json; do
             echo "Validating $file..."
             scim-sanity "$file" || exit 1
           done
-      
-      - name: Compliance check passed
-        run: echo "✅ All SCIM payloads comply with security requirements"
 ```
 
-### Audit Workflow
+## Audit Workflow
 
-Validate SCIM payloads as part of compliance audits:
+Validate all SCIM payloads in a repository as part of a periodic audit:
 
 ```bash
 #!/usr/bin/env bash
 # audit-validation.sh
 
-# Validate all SCIM payloads in repository
 find . -name "*.json" -path "*/scim-payloads/*" | while read file; do
     echo "Auditing: $file"
     if scim-sanity "$file"; then
-        echo "  ✅ Compliant"
+        echo "  PASS"
     else
-        echo "  ❌ Non-compliant"
-        scim-sanity "$file"  # Show errors
+        echo "  FAIL"
     fi
 done
 ```
 
 ## Compliance Reporting
 
-### Generate Compliance Report
+Generate a simple validation report across a payload directory:
 
 ```bash
 #!/usr/bin/env bash
 # compliance-report.sh
 
-REPORT_FILE="compliance-report.txt"
+REPORT_FILE="scim-validation-report-$(date +%Y%m%d).txt"
 
-echo "SCIM Compliance Report - $(date)" > "$REPORT_FILE"
-echo "=================================" >> "$REPORT_FILE"
-echo "" >> "$REPORT_FILE"
+echo "SCIM Payload Validation Report — $(date)" > "$REPORT_FILE"
+echo "==========================================" >> "$REPORT_FILE"
 
 find . -name "*.json" -path "*/scim-payloads/*" | while read file; do
-    echo "Validating: $file" >> "$REPORT_FILE"
-    if scim-sanity "$file" >> "$REPORT_FILE" 2>&1; then
-        echo "  Status: COMPLIANT" >> "$REPORT_FILE"
-    else
-        echo "  Status: NON-COMPLIANT" >> "$REPORT_FILE"
-    fi
     echo "" >> "$REPORT_FILE"
+    echo "File: $file" >> "$REPORT_FILE"
+    if scim-sanity "$file" >> "$REPORT_FILE" 2>&1; then
+        echo "Status: PASS" >> "$REPORT_FILE"
+    else
+        echo "Status: FAIL" >> "$REPORT_FILE"
+    fi
 done
 
 cat "$REPORT_FILE"
 ```
 
-## Best Practices for Compliance
+## Server Conformance and Audit Trails
 
-1. **Validate before provisioning**: Always validate SCIM payloads before sending to identity providers
-2. **Automate validation**: Integrate validation into CI/CD pipelines
-3. **Document exceptions**: If validation fails, document why and get approval
-4. **Regular audits**: Periodically validate all SCIM payloads in your repository
-5. **Version control**: Store validated SCIM payloads in version control for audit trails
+Run the probe against your SCIM server to verify it supports the fields required for audit logging:
+
+```bash
+scim-sanity probe https://your-app.example.com/scim/v2 \
+    --token $SCIM_TOKEN \
+    --json-output \
+    --i-accept-side-effects | jq '.issues'
+```
+
+The `issues` array in the JSON output identifies structural gaps — including missing `meta.created`/`meta.lastModified` — that would affect your ability to maintain a complete provisioning audit trail.
 
 ## References
 
-### CIS Benchmarks
-- [CIS Microsoft Azure Foundations Benchmark v5.0.0](https://downloads.cisecurity.org/#/)
-- [CIS Google Workspace Benchmark](https://downloads.cisecurity.org/#/)
-
-### Microsoft Security Benchmarks
+- [RFC 7643 - SCIM Core Schema](https://tools.ietf.org/html/rfc7643)
+- [RFC 7644 - SCIM Protocol](https://tools.ietf.org/html/rfc7644)
+- [CIS Benchmarks](https://downloads.cisecurity.org/#/)
 - [Microsoft Cloud Security Benchmark](https://github.com/MicrosoftDocs/SecurityBenchmarks)
-- [Microsoft Security Benchmarks Documentation](https://docs.microsoft.com/azure/security/benchmarks/)
-
-### Related Documentation
 - [Entra ID Integration Guide](../integrations/entra-id.md)
 - [Google Workspace Integration Guide](../integrations/google-workspace.md)
-- [Ansible Integration](../ansible/README.md)
-
