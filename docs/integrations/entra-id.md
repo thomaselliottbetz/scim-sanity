@@ -1,38 +1,58 @@
 # Microsoft Entra ID Integration Guide
 
-This guide demonstrates how to use scim-sanity to validate SCIM payloads before provisioning users and groups to Microsoft Entra ID (formerly Azure Active Directory).
+Microsoft Entra ID acts as a **SCIM client** — it pushes user and group provisioning data to your application's SCIM server endpoint. scim-sanity tests whether your SCIM server is ready to receive it.
 
-## Overview
-
-Microsoft Entra ID uses SCIM 2.0 for automated user and group provisioning. Validating SCIM payloads with scim-sanity before sending them to Entra ID helps ensure:
-
-- Required attributes are present
-- Immutable attributes aren't modified
-- Payloads conform to SCIM 2.0 standards
-- Security and compliance requirements are met
-
-scim-sanity supports User, Group, Agent, and AgenticApplication resource types, and includes a `probe` subcommand for testing live SCIM servers (see [Server Conformance Probe](#server-conformance-probe) below).
+This guide covers probing your SCIM server for Entra ID compatibility, understanding what Entra ID sends, and linting payloads with the scim-sanity validator.
 
 ## Prerequisites
 
 - scim-sanity installed (`pip install scim-sanity`)
-- Access to Microsoft Entra ID with SCIM provisioning configured
-- SCIM endpoint URL and authentication token
+- A SCIM 2.0 server endpoint your application exposes for Entra ID to provision to
+- A bearer token for that endpoint
 
-## Common SCIM Operations
+## Server Conformance Probe
 
-### Creating Users
+Point the probe at your application's SCIM server — the endpoint that Entra ID will connect to:
 
-Entra ID expects SCIM User resources with specific required attributes:
+```bash
+scim-sanity probe https://your-app.example.com/scim/v2 \
+    --token $APP_SCIM_TOKEN \
+    --i-accept-side-effects
+```
+
+The probe runs a full 7-phase CRUD lifecycle test and reports RFC 7643/7644 conformance issues. When failures are present, a prioritised Fix Summary explains what to fix and why.
+
+```bash
+# Compat mode — known real-world deviations become warnings instead of failures
+scim-sanity probe <url> --token <token> --compat --i-accept-side-effects
+
+# JSON output for CI/CD pipelines
+scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
+```
+
+See the main [README](../../README.md) for full probe options.
+
+## What Entra ID Sends
+
+Understanding Entra ID's provisioning payloads helps you build a SCIM server that handles them correctly.
+
+### User provisioning
+
+Entra ID provisions users using the core User schema plus the Enterprise User extension:
 
 ```json
 {
-  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+  "schemas": [
+    "urn:ietf:params:scim:schemas:core:2.0:User",
+    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+  ],
   "userName": "john.doe@example.com",
+  "externalId": "entra-object-id-or-guid",
   "name": {
     "givenName": "John",
     "familyName": "Doe"
   },
+  "displayName": "John Doe",
   "emails": [
     {
       "value": "john.doe@example.com",
@@ -40,54 +60,46 @@ Entra ID expects SCIM User resources with specific required attributes:
       "primary": true
     }
   ],
-  "active": true
-}
-```
-
-**Validate before sending:**
-
-```bash
-# Save payload to file
-cat > user-payload.json << 'EOF'
-{
-  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-  "userName": "john.doe@example.com",
-  "name": {
-    "givenName": "John",
-    "familyName": "Doe"
-  },
-  "emails": [
-    {
-      "value": "john.doe@example.com",
-      "type": "work",
-      "primary": true
+  "active": true,
+  "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+    "department": "Engineering",
+    "manager": {
+      "value": "manager-scim-id"
     }
-  ],
-  "active": true
+  }
 }
-EOF
-
-# Validate
-scim-sanity user-payload.json
 ```
 
-### Creating Groups
+**Key points:**
+
+- `externalId` is the Entra ID object GUID. Your server should store it — Entra uses it as the correlation key to match its records to yours.
+- `userName` is typically the UPN (user principal name).
+- Not all attributes are sent on every sync cycle. Entra ID sends only changed attributes in delta syncs.
+- Your server must return an `id` value on the 201 Created response. Entra ID stores this and uses it for all subsequent operations (GET, PATCH, DELETE) on that user.
+- Before creating a user, Entra ID typically issues a filter query to check whether the user already exists: `GET /Users?filter=userName eq "john.doe@example.com"`.
+
+### Group provisioning
 
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
   "displayName": "Engineering Team",
+  "externalId": "entra-group-guid",
   "members": [
     {
-      "value": "user-id-123",
-      "display": "John Doe",
-      "type": "User"
+      "value": "scim-user-id",
+      "display": "John Doe"
     }
   ]
 }
 ```
 
-### Updating Users (PATCH)
+### Deprovisioning
+
+Entra ID deprovisions in two steps:
+
+1. **Soft disable** — PATCH to set `active: false`
+2. **Hard delete** — DELETE when the account is fully removed from scope
 
 ```json
 {
@@ -102,93 +114,36 @@ scim-sanity user-payload.json
 }
 ```
 
-**Validate PATCH operations:**
+Your server should handle both operations correctly. A server that only implements DELETE and ignores `active` will fail Entra ID's deprovisioning flow.
+
+## Payload Linting
+
+Use the scim-sanity linter to validate SCIM payloads statically before sending them or to understand what your server should expect:
 
 ```bash
+# Validate a user payload file
+scim-sanity user-payload.json
+
+# Validate a PATCH operation
 scim-sanity --patch patch-payload.json
+
+# Validate from stdin
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user@example.com"}' | scim-sanity --stdin
 ```
 
-## Validation Workflow
+### Common mistakes the linter catches
 
-### Pre-Provisioning Validation
-
-Always validate SCIM payloads before sending them to Entra ID:
-
-```bash
-#!/usr/bin/env bash
-# validate-and-provision.sh
-
-PAYLOAD_FILE="user-payload.json"
-SCIM_ENDPOINT="${ENTRA_SCIM_ENDPOINT}"  # Your Entra ID SCIM provisioning endpoint
-
-# Validate payload
-if scim-sanity "$PAYLOAD_FILE"; then
-    echo "✅ Validation passed, provisioning user..."
-    curl -X POST "$SCIM_ENDPOINT/Users" \
-        -H "Authorization: Bearer $ENTRA_TOKEN" \
-        -H "Content-Type: application/scim+json" \
-        -d @"$PAYLOAD_FILE"
-else
-    echo "❌ Validation failed, not provisioning"
-    exit 1
-fi
-```
-
-### CI/CD Integration
-
-Validate SCIM payloads in your CI/CD pipeline:
-
-```yaml
-# .github/workflows/provision-users.yml
-name: Provision Users to Entra ID
-
-on:
-  workflow_dispatch:
-    inputs:
-      user_file:
-        description: 'Path to user payload file'
-        required: true
-
-jobs:
-  validate-and-provision:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install scim-sanity
-        run: pip install scim-sanity
-      
-      - name: Validate SCIM payload
-        run: scim-sanity ${{ github.event.inputs.user_file }}
-      
-      - name: Provision to Entra ID
-        if: success()
-        run: |
-          curl -X POST "${{ secrets.ENTRA_SCIM_ENDPOINT }}/Users" \
-            -H "Authorization: Bearer ${{ secrets.ENTRA_TOKEN }}" \
-            -H "Content-Type: application/scim+json" \
-            -d @${{ github.event.inputs.user_file }}
-```
-
-## Common Mistakes and How scim-sanity Catches Them
-
-### Missing Required Attributes
-
-**Invalid payload** (missing `userName`):
+**Missing required attributes:**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"]
 }
 ```
-
-**scim-sanity error:**
 ```
-❌ Missing required attribute: 'userName' (schema: urn:ietf:params:scim:schemas:core:2.0:User)
+❌ Missing required attribute: 'userName'
 ```
 
-### Setting Immutable Attributes
-
-**Invalid payload** (`id` is read-only and must not be set by the client):
+**Client setting a read-only attribute:**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -196,15 +151,11 @@ jobs:
   "id": "12345"
 }
 ```
-
-**scim-sanity error:**
 ```
 ❌ Immutable attribute 'id' should not be set by client (mutability: readOnly)
 ```
 
-### Using Null Values
-
-**Invalid payload** (use PATCH `remove` operation to clear attributes instead of `null`):
+**Null value instead of PATCH remove:**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -212,88 +163,19 @@ jobs:
   "displayName": null
 }
 ```
-
-**scim-sanity error:**
 ```
 ❌ Attribute 'displayName' has null value. Use PATCH 'remove' operation to clear attributes instead
 ```
 
-## Security Considerations
+## Security and Compliance
 
-### Compliance with CIS Controls
+Correct SCIM implementation supports identity governance good practices: accounts are provisioned and deprovisioned through a controlled, auditable pipeline; attributes are validated before reaching your directory; and provisioning events can be correlated against Entra ID's audit logs via `externalId`.
 
-Validating SCIM payloads supports compliance with:
-
-- **CIS Azure Foundations 5.3.2**: Guest user reviews - Validate guest user provisioning payloads
-- **CIS Azure Foundations 5.3.4**: Privileged role reviews - Validate role assignment payloads
-- **CIS Azure Foundations 5.3.5**: Disabled accounts - Validate account status changes
-
-### Microsoft Security Benchmarks
-
-SCIM validation supports:
-
-- **IM-1**: Centralized identity and authentication system
-- **IM-3**: Manage application identities securely and automatically
-- **PA-7**: Follow just enough administration (least privilege) principle
-
-## Example: Complete User Provisioning Workflow
-
-```bash
-#!/usr/bin/env bash
-set -e
-
-USER_FILE="new-user.json"
-SCIM_ENDPOINT="${ENTRA_SCIM_ENDPOINT}/Users"
-
-# Step 1: Validate payload
-echo "Validating SCIM payload..."
-if ! scim-sanity "$USER_FILE"; then
-    echo "Validation failed. Fix errors and try again."
-    exit 1
-fi
-
-# Step 2: Provision user
-echo "Provisioning user to Entra ID..."
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$SCIM_ENDPOINT" \
-    -H "Authorization: Bearer $ENTRA_TOKEN" \
-    -H "Content-Type: application/scim+json" \
-    -d @"$USER_FILE")
-
-HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-BODY=$(echo "$RESPONSE" | sed '$d')
-
-if [ "$HTTP_CODE" -eq 201 ]; then
-    echo "✅ User provisioned successfully"
-    echo "$BODY" | jq '.id'
-else
-    echo "❌ Provisioning failed (HTTP $HTTP_CODE)"
-    echo "$BODY"
-    exit 1
-fi
-```
-
-## Server Conformance Probe
-
-Entra ID acts as a **SCIM client** — it pushes provisioning data to your application's SCIM server endpoint. The scim-sanity probe tests **SCIM server** conformance, so you point it at the application endpoint that Entra ID provisions to (not at Entra ID itself):
-
-```bash
-scim-sanity probe $APP_SCIM_ENDPOINT \
-    --token $APP_SCIM_TOKEN \
-    --i-accept-side-effects
-```
-
-The probe runs a full CRUD lifecycle test (create, read, update, delete) against the application's SCIM server and reports RFC 7643/7644 conformance issues. Use `--compat` mode for lenient checking of known real-world deviations, or `--json-output` for machine-readable results.
-
-Note: The probe creates and deletes real test resources (prefixed with `scim-sanity-test-`). The `--i-accept-side-effects` flag is required. See the main [README](../../README.md) for full probe options.
-
-## Using with Ansible
-
-See the [Ansible Integration Guide](../../ansible/README.md) for using scim-sanity validation in Ansible playbooks with Entra ID.
+For formal compliance mapping, consult your organisation's compliance team against the specific control frameworks in scope (CIS, MCSB, SOC 2, etc.).
 
 ## References
 
 - [Microsoft Entra ID SCIM Documentation](https://learn.microsoft.com/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups)
-- [SCIM 2.0 Protocol Reference](https://learn.microsoft.com/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups#scim-protocol-reference)
-- [CIS Azure Foundations Benchmark](https://downloads.cisecurity.org/#/)
-- [Microsoft Cloud Security Benchmark](https://learn.microsoft.com/azure/security/benchmarks/)
-
+- [Entra ID SCIM Attribute Mapping Reference](https://learn.microsoft.com/entra/identity/app-provisioning/customize-application-attributes)
+- [RFC 7643 - SCIM Core Schema](https://tools.ietf.org/html/rfc7643)
+- [RFC 7644 - SCIM Protocol](https://tools.ietf.org/html/rfc7644)
