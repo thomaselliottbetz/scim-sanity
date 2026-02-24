@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-02-24
+
+### Added
+- Probe terminal output now shows a header line under the title with scim-sanity version, validation mode, and run timestamp
+- Same fields (`scim_sanity_version`, `mode`, `timestamp`) added to JSON output as top-level keys
+
+### Changed
+- "Configuration" pseudo-phase removed from results — mode is now shown in the header and no longer counted as a passed test
+
+### Fixed
+- `__init__.py` `__version__` was stale (0.5.1); now kept in sync with pyproject.toml
+
 ## [0.5.3] - 2026-02-23
 
 ### Added

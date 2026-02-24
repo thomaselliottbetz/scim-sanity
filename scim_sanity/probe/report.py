@@ -184,15 +184,26 @@ def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
     return issues
 
 
-def print_results(results: List[ProbeResult], json_output: bool = False):
+def print_results(
+    results: List[ProbeResult],
+    json_output: bool = False,
+    mode: str = "strict",
+    version: str = "",
+    timestamp: str = "",
+):
     """Print the full probe report in terminal or JSON format."""
     if json_output:
-        _print_json(results)
+        _print_json(results, mode=mode, version=version, timestamp=timestamp)
     else:
-        _print_terminal(results)
+        _print_terminal(results, mode=mode, version=version, timestamp=timestamp)
 
 
-def _print_terminal(results: List[ProbeResult]):
+def _print_terminal(
+    results: List[ProbeResult],
+    mode: str = "strict",
+    version: str = "",
+    timestamp: str = "",
+):
     """Render results as ANSI-colored terminal output, grouped by phase."""
     current_phase = ""
     passed = sum(1 for r in results if r.status == ProbeResult.PASS)
@@ -205,6 +216,13 @@ def _print_terminal(results: List[ProbeResult]):
     print()
     print(_colorize("SCIM Server Conformance Probe", "bold"))
     print(_colorize("=" * 50, "dim"))
+    meta_parts = []
+    if version:
+        meta_parts.append(f"scim-sanity {version}")
+    meta_parts.append(f"mode: {mode}")
+    if timestamp:
+        meta_parts.append(timestamp)
+    print(_colorize("  " + "  |  ".join(meta_parts), "dim"))
 
     for result in results:
         # Print phase header when entering a new phase
@@ -257,7 +275,12 @@ def _print_terminal(results: List[ProbeResult]):
     print()
 
 
-def _print_json(results: List[ProbeResult]):
+def _print_json(
+    results: List[ProbeResult],
+    mode: str = "strict",
+    version: str = "",
+    timestamp: str = "",
+):
     """Render results as structured JSON with summary counts."""
     passed = sum(1 for r in results if r.status == ProbeResult.PASS)
     failed = sum(1 for r in results if r.status == ProbeResult.FAIL)
@@ -266,6 +289,9 @@ def _print_json(results: List[ProbeResult]):
     errored = sum(1 for r in results if r.status == ProbeResult.ERROR)
 
     output = {
+        "scim_sanity_version": version,
+        "mode": mode,
+        "timestamp": timestamp,
         "summary": {
             "total": len(results),
             "passed": passed,

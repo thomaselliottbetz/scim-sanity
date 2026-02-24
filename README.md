@@ -160,6 +160,9 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
+  "scim_sanity_version": "0.5.4",
+  "mode": "strict",
+  "timestamp": "2026-02-24 09:15:00",
   "summary": {
     "total": 32,
     "passed": 14,
