@@ -171,12 +171,30 @@ def probe(url, token, username, password, tls_no_verify, skip_cleanup,
           proxy, ca_bundle):
     """Probe a live SCIM server for RFC 7643/7644 conformance.
 
-    Runs a CRUD lifecycle test sequence against the server at URL,
-    including discovery, User/Group/Agent/AgenticApplication operations,
-    search, and error handling.
+    Runs a 7-phase CRUD lifecycle test sequence against the server at URL.
+    Each phase tests a specific aspect of RFC conformance against real HTTP
+    traffic — no mocking.
 
     WARNING: This command creates, modifies, and deletes real resources
     on the target server.  You must pass --i-accept-side-effects to proceed.
+
+    \b
+    Test sequence:
+      1. Discovery         GET /ServiceProviderConfig, /Schemas, /ResourceTypes
+                           RFC 7644 §4 — server must implement discovery endpoints
+      2. User lifecycle    POST→GET→PUT→PATCH(active=false)→DELETE→GET(404)
+                           RFC 7644 §3.3/§3.4.1/§3.5.1/§3.6 — full CRUD + Content-Type,
+                           Location header, id, meta.created, meta.lastModified
+      3. Group lifecycle   Same pattern + PATCH add/remove members
+                           RFC 7644 §3.3, RFC 7643 §4.2
+      4. Agent lifecycle   Same pattern — skipped if server does not advertise support
+                           draft-abbey-scim-agent-extension-00
+      5. AgenticApp        Same pattern — skipped if server does not advertise support
+                           draft-abbey-scim-agent-extension-00
+      6. Search            GET /Users ListResponse, filter query, pagination,
+                           count=0 boundary — RFC 7644 §3.4.2, §8.1
+      7. Error handling    GET nonexistent (expect 404), POST invalid body (expect 400),
+                           POST missing required field (expect 400) — RFC 7644 §3.12
 
     \b
     Examples:

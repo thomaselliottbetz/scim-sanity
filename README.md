@@ -99,16 +99,46 @@ The probe implements several safety measures to prevent accidental damage:
 
 ### Test Sequence
 
-The probe runs 7 phases:
+The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP traffic — no mocking.
 
-1. **Discovery** — GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`. Validates Content-Type headers and response structure.
-2. **User CRUD Lifecycle** — POST (201), GET (200), PUT (200 + verify change), PATCH active=false (200 + verify), DELETE (204), GET (404).
-3. **Group CRUD Lifecycle** — Same pattern as User, plus PATCH add/remove members.
-4. **Agent CRUD Lifecycle** — Same pattern. Skipped if server doesn't advertise Agent support in `/ResourceTypes`.
-   - **Agent Rapid Lifecycle** — Create and immediately delete multiple agents (default 10) to test ephemeral provisioning patterns.
-5. **AgenticApplication CRUD Lifecycle** — Same pattern. Skipped if unsupported.
-6. **Search** — ListResponse structure, filter queries, pagination parameters, `count=0` boundary case. Content-Type is validated on list responses per RFC 7644 §8.1.
-7. **Error Handling** — GET nonexistent resource (expect 404), POST invalid body (expect 400), POST missing required fields (expect 400). Validates SCIM error response schema.
+1. **Discovery** (RFC 7644 §4)
+   - GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`
+   - Asserts: HTTP 200, `Content-Type: application/scim+json`, parseable JSON body
+   - A server that omits these endpoints forces clients to hardcode assumptions about server capabilities
+
+2. **User CRUD Lifecycle** (RFC 7644 §3.3, §3.4.1, §3.5.1, §3.6; RFC 7643 §4.1)
+   - POST → asserts 201, `Content-Type: application/scim+json`, `Location` header, `id`, `meta.created`, `meta.lastModified`
+   - GET by id → asserts 200, same Content-Type and meta fields
+   - PUT → asserts 200, same Content-Type and meta fields
+   - GET after PUT → asserts the updated field value persisted
+   - PATCH `active=false` → asserts 200 or 204
+   - GET after PATCH → asserts `active` is `false`
+   - DELETE → asserts 204 No Content (RFC 7644 §3.6)
+   - GET after DELETE → asserts 404
+
+3. **Group CRUD Lifecycle** (RFC 7644 §3.3; RFC 7643 §4.2)
+   - Same sequence as User
+   - Additional PATCH: add a member, then remove all members — asserts 200 each
+
+4. **Agent CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
+   - Same sequence as User
+   - Skipped if server does not advertise Agent support in `/ResourceTypes`
+   - **Agent Rapid Lifecycle** — create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
+
+5. **AgenticApplication CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
+   - Same sequence as User
+   - Skipped if server does not advertise AgenticApplication support
+
+6. **Search** (RFC 7644 §3.4.2, §8.1)
+   - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
+   - GET `/Users?filter=...` → asserts 200 (or 400 if partial filter support)
+   - GET `/Users?startIndex=1&count=1` → asserts pagination parameters honored
+   - GET `/Users?count=0` → asserts `totalResults` present with empty `Resources`
+
+7. **Error Handling** (RFC 7644 §3.12)
+   - GET nonexistent resource → asserts 404 with SCIM error schema (`schemas`, `status`)
+   - POST invalid JSON body → asserts 400 with SCIM error schema
+   - POST missing required field (`userName`) → asserts 400 with SCIM error schema
 
 ### Strict vs Compat Mode
 
@@ -339,6 +369,18 @@ source venv/bin/activate
 pip install -e ".[dev]"
 pytest -v
 ```
+
+## Planned Improvements
+
+**PATCH filter expression testing** (RFC 7644 §3.5.2) — The probe currently tests simple PATCH paths (`active`, `members`). Complex filter-based paths such as `emails[type eq "work"].value` are a known interop pain point and are not yet covered.
+
+**Phase 1 schema content validation** — Discovery endpoint tests currently verify HTTP 200 and correct Content-Type but do not validate that the returned schema bodies are well-formed or consistent with the resources the server actually implements.
+
+**Phase 6 resource body validation** — The search phase validates the ListResponse envelope structure but does not inspect individual resources within the `Resources` array. A server returning well-formed envelopes with non-conformant resource bodies would currently pass.
+
+**GitHub Action** — A ready-to-use GitHub Action for running the probe or linter in CI/CD pipelines without requiring a local Python environment.
+
+**Docker image** — A zero-setup container image for running the probe against any reachable SCIM endpoint without installing Python or pip.
 
 ## Contributing
 

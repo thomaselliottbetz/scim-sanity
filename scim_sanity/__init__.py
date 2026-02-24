@@ -5,5 +5,5 @@ and draft-abbey-scim-agent-extension-00.  The ``probe`` subcommand tests live SC
 servers through a full CRUD lifecycle sequence.
 """
 
-__version__ = "0.5.4"
+__version__ = "0.5.5"
 

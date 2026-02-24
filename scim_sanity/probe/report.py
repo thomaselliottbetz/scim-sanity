@@ -162,6 +162,7 @@ def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
     """
     failures = [r for r in results if r.status in (ProbeResult.FAIL, ProbeResult.ERROR)]
     issues = []
+    matched_ids: set = set()
     for priority, title, msg_substr, phase_prefix, rationale, fix in _KNOWN_ISSUES:
         if msg_substr is not None:
             affected = [
@@ -174,6 +175,7 @@ def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
                 if r.phase and r.phase.startswith(phase_prefix)
             ]
         if affected:
+            matched_ids.update(id(r) for r in affected)
             issues.append({
                 "priority": priority,
                 "title": title,
@@ -181,6 +183,18 @@ def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
                 "fix": fix,
                 "affected_tests": len(affected),
             })
+
+    # Catch-all: surface failures that didn't match any known pattern
+    unmatched = [r for r in failures if id(r) not in matched_ids]
+    if unmatched:
+        issues.append({
+            "priority": "?",
+            "title": f"{len(unmatched)} failure(s) not matched to a known root cause",
+            "rationale": "These failures did not match any known issue pattern and require individual investigation.",
+            "fix": "Review the individual test output above for specific error messages.",
+            "affected_tests": len(unmatched),
+        })
+
     return issues
 
 
@@ -271,6 +285,27 @@ def _print_terminal(
             )
             print(f"       Fix: {_colorize(issue['fix'], 'dim')}")
             print(f"       Rationale: {_colorize(issue['rationale'], 'dim')}")
+
+    # Verdict
+    print()
+    print(_colorize("  " + "-" * 40, "dim"))
+    if failed == 0 and errored == 0:
+        print(_colorize("  Result: All tests passed.", "bold"))
+    elif issues:
+        known = [i for i in issues if i["priority"] != "?"]
+        n_causes = len(known)
+        causes_label = "root cause" if n_causes == 1 else "root causes"
+        first = known[0]["priority"] if known else None
+        resolve = f" Resolve {first} first." if first else ""
+        print(_colorize(
+            f"  Result: {n_causes} {causes_label} account for the failures.{resolve}",
+            "dim",
+        ))
+    else:
+        print(_colorize(
+            f"  Result: {failed + errored} failure(s) — review individual test output for details.",
+            "dim",
+        ))
 
     print()
 

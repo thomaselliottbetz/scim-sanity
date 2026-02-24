@@ -45,6 +45,7 @@ def _validation_results(
     phase: str,
     ok: bool,
     errors: List[ServerValidationError],
+    pass_message: str = "",
 ) -> List[ProbeResult]:
     """Convert a ``(ok, errors)`` validation result into ``ProbeResult`` entries.
 
@@ -52,13 +53,16 @@ def _validation_results(
     compat-mode warnings appear as WARN results rather than FAILs.
     A single test may produce both a PASS/FAIL result and one or more
     WARN results in the same call.
+
+    Args:
+        pass_message: Optional note shown on PASS results to clarify what was verified.
     """
     results: List[ProbeResult] = []
     fails = [e for e in errors if e.severity != WARN]
     warns = [e for e in errors if e.severity == WARN]
 
     if ok and not fails:
-        results.append(ProbeResult(test_name, ProbeResult.PASS, phase=phase))
+        results.append(ProbeResult(test_name, ProbeResult.PASS, message=pass_message, phase=phase))
     else:
         results.append(ProbeResult(
             test_name, ProbeResult.FAIL,
@@ -276,7 +280,9 @@ def _crud_lifecycle(
         body = resp.json() if resp.body else {}
         if body and body.get(display_name_field) == new_display:
             results.append(ProbeResult(
-                f"GET {endpoint}/{{id}} after PUT", ProbeResult.PASS, phase=phase,
+                f"GET {endpoint}/{{id}} after PUT", ProbeResult.PASS,
+                message=f"{display_name_field} update persisted",
+                phase=phase,
             ))
         else:
             actual = body.get(display_name_field) if body else None
@@ -322,7 +328,9 @@ def _crud_lifecycle(
         if resource_type == "Group":
             if resp.status_code == 200:
                 results.append(ProbeResult(
-                    f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS, phase=phase,
+                    f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS,
+                    message="200 OK confirmed",
+                    phase=phase,
                 ))
             else:
                 results.append(ProbeResult(
@@ -331,7 +339,9 @@ def _crud_lifecycle(
                 ))
         elif body and body.get("active") is False:
             results.append(ProbeResult(
-                f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS, phase=phase,
+                f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS,
+                message="active=false confirmed",
+                phase=phase,
             ))
         else:
             results.append(ProbeResult(
@@ -398,7 +408,8 @@ def _crud_lifecycle(
         return results
 
     ok, errs = rv.validate_delete_response(resp.status_code, body=resp.body)
-    results.extend(_validation_results(f"DELETE {endpoint}/{{id}}", phase, ok, errs))
+    results.extend(_validation_results(f"DELETE {endpoint}/{{id}}", phase, ok, errs,
+                                       pass_message="204 No Content"))
     if ok:
         # Already deleted — remove from cleanup list to avoid double-delete
         created_resources[:] = [
@@ -411,6 +422,7 @@ def _crud_lifecycle(
         if resp.status_code == 404:
             results.append(ProbeResult(
                 f"GET {endpoint}/{{id}} after DELETE (expect 404)", ProbeResult.PASS,
+                message="404 confirmed — resource no longer exists",
                 phase=phase,
             ))
         else:

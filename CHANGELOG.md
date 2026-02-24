@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-02-24
+
+### Added
+- Planned Improvements section in README (PATCH filter expressions, Phase 1/6 depth, GitHub Action, Docker image)
+
+### Added
+- **RFC citations on all failure messages** — every error message now cites the specific RFC clause it enforces (e.g. `RFC 7644 §8.1`, `RFC 7643 §3.1`), so developers know exactly where to look
+- **Verdict line** — a plain-English result at the end of terminal output: "N root causes account for the failures. Resolve P1 first." or "All tests passed."
+- **PASS annotations on verification steps** — GET after PUT, GET after PATCH, DELETE, and GET after DELETE now show a brief note on what was verified (e.g. "active=false confirmed", "404 confirmed — resource no longer exists")
+- **Catch-all Fix Summary entry** — failures that don't match any known root cause pattern now surface as a `?` entry rather than falling through silently
+- **`pass_message` parameter on `_validation_results`** — allows callers to attach a verification note to PASS results
+
 ## [0.5.4] - 2026-02-24
 
 ### Added
