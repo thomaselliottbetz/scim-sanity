@@ -107,7 +107,5 @@ The `issues` array in the JSON output identifies structural gaps — including m
 
 - [RFC 7643 - SCIM Core Schema](https://tools.ietf.org/html/rfc7643)
 - [RFC 7644 - SCIM Protocol](https://tools.ietf.org/html/rfc7644)
-- [CIS Benchmarks](https://downloads.cisecurity.org/#/)
-- [Microsoft Cloud Security Benchmark](https://github.com/MicrosoftDocs/SecurityBenchmarks)
 - [Entra ID Integration Guide](../integrations/entra-id.md)
 - [Google Workspace Integration Guide](../integrations/google-workspace.md)

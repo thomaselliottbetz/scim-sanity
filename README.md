@@ -87,7 +87,7 @@ scim-sanity probe <url> --token <token> --ca-bundle /path/to/ca-cert.pem --i-acc
 
 The probe implements several safety measures to prevent accidental damage:
 
-- **Explicit consent** — Refuses to run without `--i-accept-side-effects`. Prints a summary of planned operations.
+- **Explicit consent** — Refuses to run without `--i-accept-side-effects`.
 - **Namespace isolation** — All test resources are prefixed with `scim-sanity-test-` to avoid collisions with real data.
 - **Resource caps** — Hard limit of 10 agents in rapid lifecycle tests.
 - **429 retry** — Automatically retries on 429 Too Many Requests, honoring `Retry-After` headers (max 3 retries).
@@ -324,7 +324,7 @@ Action plugin for SCIM validation in Ansible playbooks. See [ansible/README.md](
 
 ## Security and Compliance
 
-- [Security and Compliance Guide](docs/security/compliance.md) — CIS and Microsoft Security Benchmark compliance
+- [Security and Compliance Guide](docs/security/compliance.md)
 
 ## Development
 
