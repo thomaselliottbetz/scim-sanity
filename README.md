@@ -328,6 +328,10 @@ pip install -e ".[dev]"
 pytest -v
 ```
 
+## Related Projects
+
+**[entra-google-security-bridge](https://github.com/thomaselliottbetz/entra-google-security-bridge)** — Post-provisioning security monitoring and attribute synchronization for hybrid Microsoft Entra ID + Google Workspace environments. Covers what scim-sanity doesn't: once provisioning is verified as spec-compliant, this tool handles ongoing risky sign-in detection, guest user auditing, OAuth token scanning, and OU synchronization driven by Entra ID attribute changes.
+
 ## Contributing
 
 Contributions via Pull Request.
