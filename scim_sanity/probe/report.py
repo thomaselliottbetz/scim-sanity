@@ -154,6 +154,11 @@ _STATUS_SYMBOLS = {
 }
 
 
+def _terminal_wrap_issue_list(message: str, indent: str = "         ") -> str:
+    """Insert terminal-friendly line breaks between semicolon-delimited issues."""
+    return message.replace("; ", f";\n{indent}")
+
+
 def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
     """Derive a prioritised list of distinct issues from probe failures.
 
@@ -250,7 +255,7 @@ def _print_terminal(
         line = f"  [{_colorize(symbol, color)}] {result.name}"
         print(line)
         if result.message:
-            print(f"         {_colorize(result.message, 'dim')}")
+            print(f"         {_colorize(_terminal_wrap_issue_list(result.message), 'dim')}")
 
     # Summary footer
     print()
