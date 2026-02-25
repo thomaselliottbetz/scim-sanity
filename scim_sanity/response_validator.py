@@ -104,8 +104,13 @@ class ServerResponseValidator:
         # Status code — always a hard failure if wrong
         if actual_status != expected_status:
             errors.append(ServerValidationError(
-                f"Expected HTTP {expected_status}, got {actual_status}"
+                f"Expected HTTP {expected_status}, got {actual_status} (RFC 7644 §3.3)"
             ))
+            # If the server returned an error status, skip SCIM field validation —
+            # missing id/meta/schemas are predictable consequences of the error,
+            # not independent conformance issues worth reporting separately
+            if actual_status >= 400:
+                return self._is_valid(errors), errors
 
         if data is None:
             if expected_status != 204:
@@ -121,37 +126,39 @@ class ServerResponseValidator:
                     pass  # correct per spec
                 elif "application/json" in ct:
                     errors.append(ServerValidationError(
-                        f"Content-Type should be application/scim+json, got '{ct}'",
+                        f"Content-Type should be application/scim+json, got '{ct}' (RFC 7644 §8.1)",
                         severity=self._sev(is_strict_only=True),
                     ))
                 else:
                     errors.append(ServerValidationError(
-                        f"Content-Type should be application/scim+json, got '{ct}'"
+                        f"Content-Type should be application/scim+json, got '{ct}' (RFC 7644 §8.1)"
                     ))
 
-        # schemas array — required by RFC 7643 Section 3
+        # schemas array — required by RFC 7643 §3
         schemas = data.get("schemas")
         if not schemas or not isinstance(schemas, list):
-            errors.append(ServerValidationError("Response missing 'schemas' array"))
+            errors.append(ServerValidationError(
+                "Response missing 'schemas' array (RFC 7643 §3)"
+            ))
             return False, errors
 
-        # id — server MUST assign and return (RFC 7643 Section 3.1)
+        # id — server MUST assign and return (RFC 7643 §3.1)
         if "id" not in data:
             errors.append(ServerValidationError(
-                "Server response missing required attribute 'id'"
+                "Server response missing required attribute 'id' (RFC 7643 §3.1)"
             ))
 
-        # meta — server MUST return with resourceType, created, lastModified
+        # meta — server MUST return with resourceType, created, lastModified (RFC 7643 §3.1)
         meta = data.get("meta")
         if meta is None:
             errors.append(ServerValidationError(
-                "Server response missing required attribute 'meta'"
+                "Server response missing required attribute 'meta' (RFC 7643 §3.1)"
             ))
         elif isinstance(meta, dict):
             for field in ("resourceType", "created", "lastModified"):
                 if field not in meta:
                     errors.append(ServerValidationError(
-                        f"meta.{field} must be present in server response",
+                        f"meta.{field} must be present in server response (RFC 7643 §3.1)",
                         path=f"meta.{field}",
                     ))
 
@@ -159,33 +166,33 @@ class ServerResponseValidator:
             version = meta.get("version")
             if version is not None and not isinstance(version, str):
                 errors.append(ServerValidationError(
-                    f"meta.version must be a string, got {type(version).__name__}",
+                    f"meta.version must be a string, got {type(version).__name__} (RFC 7643 §3.1)",
                     path="meta.version",
                 ))
 
-        # ETag header consistency with meta.version (RFC 7644 Section 3.14)
+        # ETag header consistency with meta.version (RFC 7644 §3.14)
         # When both are present, they should match
         if headers and meta and isinstance(meta, dict):
             etag = _header_value(headers, "ETag")
             version = meta.get("version")
             if etag and version and etag.strip('"') != version.strip('"'):
                 errors.append(ServerValidationError(
-                    f"ETag header '{etag}' does not match meta.version '{version}'",
+                    f"ETag header '{etag}' does not match meta.version '{version}' (RFC 7644 §3.14)",
                     severity=self._sev(is_strict_only=True),
                 ))
 
-        # Location header on 201 Created — must match meta.location
+        # Location header on 201 Created — must match meta.location (RFC 7644 §3.3)
         if actual_status == 201 and headers and meta and isinstance(meta, dict):
             loc_header = _header_value(headers, "Location")
             meta_loc = meta.get("location")
             if loc_header and meta_loc and loc_header != meta_loc:
                 errors.append(ServerValidationError(
-                    f"Location header '{loc_header}' does not match meta.location '{meta_loc}'",
+                    f"Location header '{loc_header}' does not match meta.location '{meta_loc}' (RFC 7644 §3.3)",
                     severity=self._sev(is_strict_only=True),
                 ))
             elif not loc_header and actual_status == 201:
                 errors.append(ServerValidationError(
-                    "Location header should be present on 201 Created",
+                    "Location header should be present on 201 Created (RFC 7644 §3.3)",
                     severity=self._sev(is_strict_only=True),
                 ))
 
@@ -211,28 +218,45 @@ class ServerResponseValidator:
 
         if actual_status != 200:
             errors.append(ServerValidationError(
-                f"Expected HTTP 200 for list, got {actual_status}"
+                f"Expected HTTP 200 for list, got {actual_status} (RFC 7644 §3.4.2)"
             ))
 
         if data is None:
             errors.append(ServerValidationError("Response body is empty"))
             return False, errors
 
-        # Must include the ListResponse schema URN
+        # Content-Type: application/scim+json is required by spec (RFC 7644 §8.1),
+        # including on list responses — no exemption for ListResponse envelopes
+        if headers:
+            ct = _header_value(headers, "Content-Type")
+            if ct:
+                if "application/scim+json" in ct:
+                    pass  # correct per spec
+                elif "application/json" in ct:
+                    errors.append(ServerValidationError(
+                        f"Content-Type should be application/scim+json, got '{ct}' (RFC 7644 §8.1)",
+                        severity=self._sev(is_strict_only=True),
+                    ))
+                else:
+                    errors.append(ServerValidationError(
+                        f"Content-Type should be application/scim+json, got '{ct}' (RFC 7644 §8.1)"
+                    ))
+
+        # Must include the ListResponse schema URN (RFC 7644 §3.4.2)
         schemas = data.get("schemas", [])
         if "urn:ietf:params:scim:api:messages:2.0:ListResponse" not in schemas:
             errors.append(ServerValidationError(
-                "ListResponse must include schema 'urn:ietf:params:scim:api:messages:2.0:ListResponse'"
+                "ListResponse must include schema 'urn:ietf:params:scim:api:messages:2.0:ListResponse' (RFC 7644 §3.4.2)"
             ))
 
-        # totalResults is required
+        # totalResults is required (RFC 7644 §3.4.2)
         if "totalResults" not in data:
             errors.append(ServerValidationError(
-                "ListResponse missing required attribute 'totalResults'"
+                "ListResponse missing required attribute 'totalResults' (RFC 7644 §3.4.2)"
             ))
         elif not isinstance(data["totalResults"], int):
             errors.append(ServerValidationError(
-                f"totalResults must be an integer, got {type(data['totalResults']).__name__}",
+                f"totalResults must be an integer, got {type(data['totalResults']).__name__} (RFC 7644 §3.4.2)",
                 severity=self._sev(is_strict_only=True),
             ))
 
@@ -265,29 +289,29 @@ class ServerResponseValidator:
 
         if actual_status != expected_status:
             errors.append(ServerValidationError(
-                f"Expected HTTP {expected_status}, got {actual_status}"
+                f"Expected HTTP {expected_status}, got {actual_status} (RFC 7644 §3.12)"
             ))
 
         if data is None:
             # Some servers return empty body on errors — compat: warn only
             errors.append(ServerValidationError(
-                "Error response body is empty",
+                "Error response body is empty (RFC 7644 §3.12)",
                 severity=self._sev(is_strict_only=True),
             ))
             return self._is_valid(errors), errors
 
-        # Error schema URN is required per spec but often missing in practice
+        # Error schema URN is required per spec but often missing in practice (RFC 7644 §3.12)
         schemas = data.get("schemas", [])
         if "urn:ietf:params:scim:api:messages:2.0:Error" not in schemas:
             errors.append(ServerValidationError(
-                "Error response must include schema 'urn:ietf:params:scim:api:messages:2.0:Error'",
+                "Error response must include schema 'urn:ietf:params:scim:api:messages:2.0:Error' (RFC 7644 §3.12)",
                 severity=self._sev(is_strict_only=True),
             ))
 
-        # status field is required in the error body
+        # status field is required in the error body (RFC 7644 §3.12)
         if "status" not in data:
             errors.append(ServerValidationError(
-                "Error response missing required attribute 'status'",
+                "Error response missing required attribute 'status' (RFC 7644 §3.12)",
                 severity=self._sev(is_strict_only=True),
             ))
 
@@ -304,12 +328,12 @@ class ServerResponseValidator:
         errors: List[ServerValidationError] = []
         if actual_status != 204:
             errors.append(ServerValidationError(
-                f"Expected HTTP 204 for DELETE, got {actual_status}"
+                f"Expected HTTP 204 for DELETE, got {actual_status} (RFC 7644 §3.6)"
             ))
         # Some servers return a body on 204 — technically wrong, but common
         if body and body.strip():
             errors.append(ServerValidationError(
-                "DELETE 204 response should have no body",
+                "DELETE 204 response should have no body (RFC 7644 §3.6)",
                 severity=self._sev(is_strict_only=True),
             ))
         return self._is_valid(errors), errors
@@ -345,7 +369,7 @@ class ServerResponseValidator:
                     attr_name = attr_def["name"]
                     if attr_name in check_data:
                         errors.append(ServerValidationError(
-                            f"writeOnly attribute '{attr_name}' must not appear in server response",
+                            f"writeOnly attribute '{attr_name}' must not appear in server response (RFC 7643 §7)",
                             path=attr_name,
                         ))
 

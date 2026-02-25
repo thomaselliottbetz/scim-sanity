@@ -1,6 +1,6 @@
 # scim-sanity
 
-Validate SCIM 2.0 payloads (static linting) and probe live SCIM servers for RFC 7643/7644 conformance. Supports User, Group, Agent, and AgenticApplication resources, including agentic identity types per `draft-abbey-scim-agent-extension-00`.
+Find out exactly where your SCIM server deviates from RFC 7643/7644 — before client integrations fail in production. Also validates SCIM payloads statically before they reach a server. Supports User, Group, Agent, and AgenticApplication resources, including agentic identity types per `draft-abbey-scim-agent-extension-00`.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,13 +9,12 @@ Validate SCIM 2.0 payloads (static linting) and probe live SCIM servers for RFC 
 ## Features
 
 **scim-sanity** is a **pragmatic, production-oriented SCIM conformance and interoperability harness**:
-- **Payload validation (linting)** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
 - **Server conformance probe** — Run a 7-phase CRUD lifecycle test against a live SCIM endpoint. Tests discovery, User/Group/Agent/AgenticApplication operations, search, pagination, and error handling.
+- **Payload validation (linting)** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
 - **Agentic identity support** — Validates Agent and AgenticApplication resources per IETF `draft-abbey-scim-agent-extension-00`.
 - **Strict and compat modes** — Strict mode (default) treats all spec deviations as failures. Compat mode downgrades known real-world deviations (e.g., `application/json` instead of `application/scim+json`) to warnings.
-- It performs **behavioral, black-box testing** of SCIM servers via real CRUD, search, and lifecycle flows.
-- It focuses on high-value, real-world failure modes and interoperability gaps. It is designed to **surface real-world integration failures**, not to provide formal certification or exhaustive proof of RFC compliance.
-- **Zero runtime dependencies** — Uses only Python stdlib. Click and requests are optional enhancements detected at import time.
+- **Behavioral, black-box testing** — Tests servers via real CRUD, search, and lifecycle flows against the failure modes that break real integrations.
+- **Minimal dependencies** — Requires only Click. The `requests` library is auto-detected and used when available for richer HTTP handling, but is not required.
 
 ## Installation
 
@@ -32,45 +31,6 @@ python -m venv venv
 source venv/bin/activate
 pip install -e ".[dev]"
 ```
-
-## Payload Validation (Linting)
-
-Statically validate (lint) SCIM resource payloads and PATCH operations before sending them to a server. Resource type is auto-detected from schema URNs. This is a spec-driven validator with linter-style ergonomics: fast, offline, and suitable for CI/CD gating.
-
-```bash
-# Validate a resource file
-scim-sanity user.json
-
-# Validate a PATCH operation
-scim-sanity --patch patch.json
-
-# Validate from stdin
-echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user@example.com"}' | scim-sanity --stdin
-
-# Use in CI/CD pipelines
-scim-sanity payload.json || exit 1
-```
-
-### Validation Rules
-
-**Required attributes:**
-- User: `userName`
-- Group: `displayName`
-- Agent: `name`
-- AgenticApplication: `name`
-
-**What it checks:**
-- Schema URN validity and presence
-- Required attributes per resource type
-- Immutable attributes (`id`, `meta`) not set by client
-- Null values (use PATCH `remove` instead)
-- PATCH operation structure (`op`, `path`, `value` correctness)
-- Complex and multi-valued attribute structure
-
-### Exit Codes
-
-- `0` — Validation passed (or all probe tests passed)
-- `1` — Validation failed, probe failures detected, or error
 
 ## Server Conformance Probe
 
@@ -127,10 +87,11 @@ scim-sanity probe <url> --token <token> --ca-bundle /path/to/ca-cert.pem --i-acc
 
 The probe implements several safety measures to prevent accidental damage:
 
-- **Explicit consent** — Refuses to run without `--i-accept-side-effects`. Prints a summary of planned operations.
+- **Explicit consent** — Refuses to run without `--i-accept-side-effects`.
 - **Namespace isolation** — All test resources are prefixed with `scim-sanity-test-` to avoid collisions with real data.
 - **Resource caps** — Hard limit of 10 agents in rapid lifecycle tests.
 - **429 retry** — Automatically retries on 429 Too Many Requests, honoring `Retry-After` headers (max 3 retries).
+- **500 transience detection** — When a POST returns 500, the probe retries once after a brief delay using the same request headers. If the retry succeeds, the result is recorded as a warning ("transient instability") and the CRUD lifecycle continues with the resource created by the retry. If both attempts fail, content-type rejection diagnosis runs before reporting the final failure.
 - **Timeouts** — Per-request timeouts prevent hung runs.
 - **Cleanup** — Deletes all created test resources in reverse order (groups before users). Skippable with `--skip-cleanup`.
 - **Failure semantics** — If the process is interrupted, partial cleanup may occur; orphaned test resources are possible and should be removed manually.
@@ -138,16 +99,46 @@ The probe implements several safety measures to prevent accidental damage:
 
 ### Test Sequence
 
-The probe runs 7 phases:
+The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP traffic — no mocking.
 
-1. **Discovery** — GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`. Validates Content-Type headers and response structure.
-2. **User CRUD Lifecycle** — POST (201), GET (200), PUT (200 + verify change), PATCH active=false (200 + verify), DELETE (204), GET (404).
-3. **Group CRUD Lifecycle** — Same pattern as User, plus PATCH add/remove members.
-4. **Agent CRUD Lifecycle** — Same pattern. Skipped if server doesn't advertise Agent support in `/ResourceTypes`.
-5. **AgenticApplication CRUD Lifecycle** — Same pattern. Skipped if unsupported.
-5a. **Agent Rapid Lifecycle** — Create and immediately delete multiple agents (default 10) to test ephemeral provisioning patterns.
-6. **Search** — ListResponse structure, filter queries, pagination parameters, `count=0` boundary case.
-7. **Error Handling** — GET nonexistent resource (expect 404), POST invalid body (expect 400), POST missing required fields (expect 400). Validates SCIM error response schema.
+1. **Discovery** (RFC 7644 §4)
+   - GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`
+   - Asserts: HTTP 200, `Content-Type: application/scim+json`, parseable JSON body
+   - A server that omits these endpoints forces clients to hardcode assumptions about server capabilities
+
+2. **User CRUD Lifecycle** (RFC 7644 §3.3, §3.4.1, §3.5.1, §3.6; RFC 7643 §4.1)
+   - POST → asserts 201, `Content-Type: application/scim+json`, `Location` header, `id`, `meta.created`, `meta.lastModified`
+   - GET by id → asserts 200, same Content-Type and meta fields
+   - PUT → asserts 200, same Content-Type and meta fields
+   - GET after PUT → asserts the updated field value persisted
+   - PATCH `active=false` → asserts 200 or 204
+   - GET after PATCH → asserts `active` is `false`
+   - DELETE → asserts 204 No Content (RFC 7644 §3.6)
+   - GET after DELETE → asserts 404
+
+3. **Group CRUD Lifecycle** (RFC 7644 §3.3; RFC 7643 §4.2)
+   - Same sequence as User
+   - Additional PATCH: add a member, then remove all members — asserts 200 each
+
+4. **Agent CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
+   - Same sequence as User
+   - Skipped if server does not advertise Agent support in `/ResourceTypes`
+   - **Agent Rapid Lifecycle** — create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
+
+5. **AgenticApplication CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
+   - Same sequence as User
+   - Skipped if server does not advertise AgenticApplication support
+
+6. **Search** (RFC 7644 §3.4.2, §8.1)
+   - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
+   - GET `/Users?filter=...` → asserts 200 (or 400 if partial filter support)
+   - GET `/Users?startIndex=1&count=1` → asserts pagination parameters honored
+   - GET `/Users?count=0` → asserts `totalResults` present with empty `Resources`
+
+7. **Error Handling** (RFC 7644 §3.12)
+   - GET nonexistent resource → asserts 404 with SCIM error schema (`schemas`, `status`)
+   - POST invalid JSON body → asserts 400 with SCIM error schema
+   - POST missing required field (`userName`) → asserts 400 with SCIM error schema
 
 ### Strict vs Compat Mode
 
@@ -163,6 +154,11 @@ Current compat warnings include:
 
 Warnings appear in output but don't cause a non-zero exit code.
 
+**Always failures (not compat-eligible):** Some deviations are reported as `FAIL` in both strict and compat mode because they fundamentally break RFC-compliant clients:
+- Server rejects `Content-Type: application/scim+json` requests (e.g., with 500) but accepts `application/json` — diagnosed automatically and cited against RFC 7644 §8.2.
+
+**Error response reporting:** When a server returns a 4xx or 5xx status for a resource endpoint, only the unexpected status code is reported. Predictable side-effects (missing `id`, `meta`, `schemas` in the error body) are suppressed to avoid obscuring the root cause with cascade noise.
+
 #### Real-World Server Behavior
 
 Enterprise SCIM servers often exhibit:
@@ -173,6 +169,19 @@ Enterprise SCIM servers often exhibit:
 
 scim-sanity attempts to behave accordingly by retrying on 429, validating boundary cases, and clearly reporting unsupported or nonconformant behavior.
 
+### Fix Summary
+
+When failures are present, the probe appends a prioritised **Fix Summary** after the results. Each entry has three lines:
+
+```
+  [P1] Trouble: Wrong Content-Type on SCIM responses (12 tests affected)
+       Fix: Set Content-Type: application/scim+json on all responses served from /scim/v2/
+       Rationale: Compliant clients inspect Content-Type before parsing — every response
+                  is rejected regardless of whether the body is otherwise correct.
+```
+
+Issues are ordered by severity (P1 most critical). The fix summary is omitted when all tests pass. In JSON output mode, the same information is available as an `issues` array (see below).
+
 ### JSON Output (Stable Interface)
 
 ```bash
@@ -181,93 +190,126 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "version": "0.4.0",
-  "mode": "compat",
+  "scim_sanity_version": "0.5.4",
+  "mode": "strict",
+  "timestamp": "2026-02-24 09:15:00",
   "summary": {
-    "total": 35,
-    "passed": 33,
-    "failed": 0,
-    "warnings": 2,
-    "skipped": 0,
+    "total": 32,
+    "passed": 14,
+    "failed": 15,
+    "warnings": 0,
+    "skipped": 3,
     "errors": 0
   },
+  "issues": [
+    {
+      "priority": "P1",
+      "title": "Wrong Content-Type on SCIM responses",
+      "rationale": "Compliant clients inspect Content-Type before parsing — every response is rejected regardless of whether the body is otherwise correct.",
+      "fix": "Set Content-Type: application/scim+json on all responses served from /scim/v2/",
+      "affected_tests": 12
+    }
+  ],
   "results": [
-    {"name": "GET /ServiceProviderConfig", "status": "pass", "phase": "Phase 1 — Discovery"},
-    {"name": "GET /ServiceProviderConfig", "status": "warn", "message": "Content-Type should be application/scim+json, got 'application/json'", "phase": "Phase 1 — Discovery"}
+    {"name": "GET /ServiceProviderConfig", "status": "fail", "message": "Content-Type should be application/scim+json, got 'text/html; charset=utf-8'", "phase": "Phase 1 — Discovery"}
   ]
 }
 ```
+
 The JSON schema is treated as a public interface and is stable within major versions.
+
+## Payload Validation (Linting)
+
+Statically validate (lint) SCIM resource payloads and PATCH operations before sending them to a server. Resource type is auto-detected from schema URNs. This is a spec-driven validator with linter-style ergonomics: fast, offline, and suitable for CI/CD gating.
+
+```bash
+# Validate a resource file
+scim-sanity user.json
+
+# Validate a PATCH operation
+scim-sanity --patch patch.json
+
+# Validate from stdin
+echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user@example.com"}' | scim-sanity --stdin
+
+# Use in CI/CD pipelines
+scim-sanity payload.json || exit 1
+```
+
+### Validation Rules
+
+**Required attributes:**
+- User: `userName`
+- Group: `displayName`
+- Agent: `name`
+- AgenticApplication: `name`
+
+**What it checks:**
+- Schema URN validity and presence
+- Required attributes per resource type
+- Immutable attributes (`id`, `meta`) not set by client
+- Null values (use PATCH `remove` instead)
+- PATCH operation structure (`op`, `path`, `value` correctness)
+- Complex and multi-valued attribute structure
+
+### Exit Codes
+
+- `0` — Validation passed (or all probe tests passed)
+- `1` — Validation failed, probe failures detected, or error
 
 ## Payload Examples
 
-### Valid User Resource
+### What the linter catches
+
+Given a payload with a missing required field and a client-set immutable attribute:
 
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-  "userName": "john.doe@example.com",
-  "name": {
-    "givenName": "John",
-    "familyName": "Doe"
-  },
-  "emails": [
-    {
-      "value": "john.doe@example.com",
-      "type": "work",
-      "primary": true
-    }
-  ],
-  "active": true
+  "id": "123",
+  "name": {"givenName": "John"}
 }
 ```
 
-### Valid Group Resource
+```
+Found 3 error(s):
 
+❌ Missing required attribute: 'userName' (schema: urn:ietf:params:scim:schemas:core:2.0:User) at userName
+❌ User resource missing required attribute: 'userName'
+❌ Immutable attribute 'id' should not be set by client (mutability: readOnly) at id
+```
+
+### Minimal valid examples
+
+**User**
+```json
+{
+  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+  "userName": "john.doe@example.com"
+}
+```
+
+**Group**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
-  "displayName": "Engineering Team",
-  "members": [
-    {
-      "value": "user-id-123",
-      "display": "John Doe",
-      "type": "User"
-    }
-  ]
+  "displayName": "Engineering Team"
 }
 ```
 
-### Valid Agent Resource
-
+**Agent**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
-  "name": "research-assistant"
+  "name": "automation-agent"
 }
 ```
 
-### Valid AgenticApplication Resource
-
-```json
-{
-  "schemas": ["urn:ietf:params:scim:schemas:core:2.0:AgenticApplication"],
-  "name": "assistant-platform"
-}
-```
-
-### Valid PATCH Operation
-
+**PATCH operation**
 ```json
 {
   "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-  "Operations": [
-    {
-      "op": "replace",
-      "path": "displayName",
-      "value": "New Name"
-    }
-  ]
+  "Operations": [{"op": "replace", "path": "displayName", "value": "New Name"}]
 }
 ```
 
@@ -315,7 +357,7 @@ Action plugin for SCIM validation in Ansible playbooks. See [ansible/README.md](
 
 ## Security and Compliance
 
-- [Security and Compliance Guide](docs/security/compliance.md) — CIS and Microsoft Security Benchmark compliance
+- [Security and Compliance Guide](docs/security/compliance.md)
 
 ## Development
 
@@ -327,6 +369,18 @@ source venv/bin/activate
 pip install -e ".[dev]"
 pytest -v
 ```
+
+## Planned Improvements
+
+**PATCH filter expression testing** (RFC 7644 §3.5.2) — The probe currently tests simple PATCH paths (`active`, `members`). Complex filter-based paths such as `emails[type eq "work"].value` are a known interop pain point and are not yet covered.
+
+**Phase 1 schema content validation** — Discovery endpoint tests currently verify HTTP 200 and correct Content-Type but do not validate that the returned schema bodies are well-formed or consistent with the resources the server actually implements.
+
+**Phase 6 resource body validation** — The search phase validates the ListResponse envelope structure but does not inspect individual resources within the `Resources` array. A server returning well-formed envelopes with non-conformant resource bodies would currently pass.
+
+**GitHub Action** — A ready-to-use GitHub Action for running the probe or linter in CI/CD pipelines without requiring a local Python environment.
+
+**Docker image** — A zero-setup container image for running the probe against any reachable SCIM endpoint without installing Python or pip.
 
 ## Related Projects
 

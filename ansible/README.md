@@ -4,7 +4,7 @@ This directory contains Ansible integration for validating SCIM 2.0 payloads usi
 
 ## Overview
 
-The Ansible Action Plugin allows you to validate SCIM resources directly in your Ansible playbooks, ensuring that SCIM payloads are correct before they're sent to identity providers like Microsoft Entra ID or Google Workspace. Supports User, Group, Agent, and AgenticApplication resource types.
+The Ansible Action Plugin allows you to validate SCIM resources directly in your Ansible playbooks, ensuring that SCIM payloads are correct before they reach a SCIM server. Supports User, Group, Agent, and AgenticApplication resource types.
 
 ## Installation
 
@@ -143,45 +143,9 @@ The Ansible Action Plugin allows you to validate SCIM resources directly in your
 
 ## Integration with Identity Providers
 
-### Microsoft Entra ID
+Identity providers such as Microsoft Entra ID and Google Workspace act as SCIM clients — they push provisioning data to your application's SCIM server. Use the linter to validate payloads your SCIM server will handle, and the probe to verify your server is ready to receive them.
 
-```yaml
-- name: Validate user for Entra ID provisioning
-  scim_validate:
-    payload: "{{ entra_user_payload }}"
-    operation: full
-  register: validation
-
-- name: Provision to Entra ID
-  uri:
-    url: "{{ entra_scim_endpoint }}/Users"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ entra_token }}"
-      Content-Type: "application/scim+json"
-    body: "{{ entra_user_payload | to_json }}"
-  when: validation.valid
-```
-
-### Google Workspace
-
-```yaml
-- name: Validate user for Google Workspace
-  scim_validate:
-    payload: "{{ google_user_payload }}"
-    operation: full
-  register: validation
-
-- name: Provision to Google Workspace
-  uri:
-    url: "{{ google_scim_endpoint }}/Users"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ google_token }}"
-      Content-Type: "application/scim+json"
-    body: "{{ google_user_payload | to_json }}"
-  when: validation.valid
-```
+See the [Entra ID](../docs/integrations/entra-id.md) and [Google Workspace](../docs/integrations/google-workspace.md) integration guides for IdP-specific payload examples and architecture details.
 
 ## Server Conformance Probe
 
@@ -229,7 +193,7 @@ The plugin returns detailed error information:
 
 ## Best Practices
 
-1. **Validate before provisioning**: Always validate SCIM payloads before sending them to identity providers
+1. **Validate before provisioning**: Always validate SCIM payloads before they reach a SCIM server
 2. **Use in CI/CD**: Integrate validation into your deployment pipelines
 3. **Fail fast**: Use `fail_on_error: true` (default) to catch issues early
 4. **Store valid payloads**: Only proceed with provisioning if validation passes

@@ -14,6 +14,7 @@ The ``_crud_lifecycle`` helper implements the generic POST-GET-PUT-PATCH-DELETE
 sequence shared by all resource types.
 """
 
+import time
 import urllib.parse
 from typing import Any, Callable, Dict, List, Optional, Set
 
@@ -44,6 +45,7 @@ def _validation_results(
     phase: str,
     ok: bool,
     errors: List[ServerValidationError],
+    pass_message: str = "",
 ) -> List[ProbeResult]:
     """Convert a ``(ok, errors)`` validation result into ``ProbeResult`` entries.
 
@@ -51,13 +53,16 @@ def _validation_results(
     compat-mode warnings appear as WARN results rather than FAILs.
     A single test may produce both a PASS/FAIL result and one or more
     WARN results in the same call.
+
+    Args:
+        pass_message: Optional note shown on PASS results to clarify what was verified.
     """
     results: List[ProbeResult] = []
     fails = [e for e in errors if e.severity != WARN]
     warns = [e for e in errors if e.severity == WARN]
 
     if ok and not fails:
-        results.append(ProbeResult(test_name, ProbeResult.PASS, phase=phase))
+        results.append(ProbeResult(test_name, ProbeResult.PASS, message=pass_message, phase=phase))
     else:
         results.append(ProbeResult(
             test_name, ProbeResult.FAIL,
@@ -73,6 +78,64 @@ def _validation_results(
         ))
 
     return results
+
+
+def _retry_post_on_500(
+    client: SCIMClient,
+    endpoint: str,
+    payload: Dict[str, Any],
+    delay: float = 2.0,
+) -> Optional[SCIMResponse]:
+    """Retry a POST that returned 500 after a brief delay using the same headers.
+
+    Returns the successful response if the retry returns 2xx, or None if it
+    also fails. Used to distinguish transient 500s from structural failures
+    before escalating to content-type diagnosis.
+    """
+    time.sleep(delay)
+    try:
+        resp = client.post(endpoint, payload)
+        if resp.status_code in (200, 201):
+            return resp
+    except Exception:
+        pass
+    return None
+
+
+def _diagnose_content_type_rejection(
+    client: SCIMClient,
+    endpoint: str,
+    payload: Dict[str, Any],
+    created_resources: List[Dict[str, Any]],
+) -> Optional[str]:
+    """When a POST returns 500, retry with Content-Type: application/json to
+    determine whether the server is rejecting application/scim+json requests.
+
+    Returns a specific RFC-cited error string if the retry succeeds, or None
+    if the retry also fails (indicating a different root cause).
+    Cleans up any resource created during the diagnostic retry.
+    """
+    try:
+        resp = client.post(endpoint, payload,
+                           extra_headers={"Content-Type": "application/json"})
+        if resp.status_code in (200, 201):
+            body = resp.json() if resp.body else None
+            if body and "id" in body:
+                resource_id = body["id"]
+                try:
+                    del_resp = client.delete(f"{endpoint}/{resource_id}")
+                    if del_resp.status_code != 204:
+                        created_resources.append({"endpoint": endpoint, "id": resource_id})
+                except Exception:
+                    created_resources.append({"endpoint": endpoint, "id": resource_id})
+            return (
+                "Server rejected Content-Type: application/scim+json with 500 "
+                "but accepted application/json — server MUST accept "
+                "application/scim+json per RFC 7644 §8.2"
+            )
+    except Exception:
+        pass
+    return None
 
 
 def _crud_lifecycle(
@@ -117,6 +180,35 @@ def _crud_lifecycle(
             message=str(exc), phase=phase,
         ))
         return results
+
+    # Diagnostic: if 500, first check for transience, then content-type rejection
+    if resp.status_code == 500:
+        retry_resp = _retry_post_on_500(client, endpoint, payload)
+        if retry_resp is not None:
+            # Transient 500 — warn and continue lifecycle with the retry response
+            results.append(ProbeResult(
+                f"POST {endpoint}", ProbeResult.WARN,
+                message=(
+                    "Server returned 500 on first attempt but succeeded on retry — "
+                    "server has transient instability (RFC 7644 §3.3 requires reliable 201)"
+                ),
+                phase=phase,
+            ))
+            resp = retry_resp
+        else:
+            # Consistent 500 — check whether server rejects application/scim+json
+            hint = _diagnose_content_type_rejection(client, endpoint, payload, created_resources)
+            if hint:
+                results.append(ProbeResult(
+                    f"POST {endpoint}", ProbeResult.FAIL,
+                    message=hint, phase=phase,
+                ))
+                results.append(ProbeResult(
+                    f"GET {endpoint}/{{id}}", ProbeResult.SKIP,
+                    message="Skipped — POST failed due to Content-Type rejection",
+                    phase=phase,
+                ))
+                return results
 
     ok, errs = rv.validate_resource_response(
         resp.json() if resp.body else None,
@@ -188,7 +280,9 @@ def _crud_lifecycle(
         body = resp.json() if resp.body else {}
         if body and body.get(display_name_field) == new_display:
             results.append(ProbeResult(
-                f"GET {endpoint}/{{id}} after PUT", ProbeResult.PASS, phase=phase,
+                f"GET {endpoint}/{{id}} after PUT", ProbeResult.PASS,
+                message=f"{display_name_field} update persisted",
+                phase=phase,
             ))
         else:
             actual = body.get(display_name_field) if body else None
@@ -225,13 +319,29 @@ def _crud_lifecycle(
     )
     results.extend(_validation_results(f"PATCH {endpoint}/{{id}}", phase, ok, errs))
 
-    # Verify PATCH took effect via a follow-up GET
+    # Verify PATCH took effect via a follow-up GET.
+    # active is not defined for Group resources (RFC 7643 §4.2), so for Groups
+    # we only verify the GET succeeds rather than checking the active field.
     try:
         resp = client.get(f"{endpoint}/{resource_id}")
         body = resp.json() if resp.body else {}
-        if body and body.get("active") is False:
+        if resource_type == "Group":
+            if resp.status_code == 200:
+                results.append(ProbeResult(
+                    f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS,
+                    message="200 OK confirmed",
+                    phase=phase,
+                ))
+            else:
+                results.append(ProbeResult(
+                    f"GET {endpoint}/{{id}} after PATCH", ProbeResult.FAIL,
+                    message=f"Expected 200, got {resp.status_code}", phase=phase,
+                ))
+        elif body and body.get("active") is False:
             results.append(ProbeResult(
-                f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS, phase=phase,
+                f"GET {endpoint}/{{id}} after PATCH", ProbeResult.PASS,
+                message="active=false confirmed",
+                phase=phase,
             ))
         else:
             results.append(ProbeResult(
@@ -298,7 +408,8 @@ def _crud_lifecycle(
         return results
 
     ok, errs = rv.validate_delete_response(resp.status_code, body=resp.body)
-    results.extend(_validation_results(f"DELETE {endpoint}/{{id}}", phase, ok, errs))
+    results.extend(_validation_results(f"DELETE {endpoint}/{{id}}", phase, ok, errs,
+                                       pass_message="204 No Content"))
     if ok:
         # Already deleted — remove from cleanup list to avoid double-delete
         created_resources[:] = [
@@ -311,6 +422,7 @@ def _crud_lifecycle(
         if resp.status_code == 404:
             results.append(ProbeResult(
                 f"GET {endpoint}/{{id}} after DELETE (expect 404)", ProbeResult.PASS,
+                message="404 confirmed — resource no longer exists",
                 phase=phase,
             ))
         else:
@@ -656,15 +768,11 @@ def test_error_handling(client: SCIMClient, rv: ServerResponseValidator) -> List
     # -- POST invalid body (expect 400) --------------------------------------
     try:
         resp = client.post("/Users", {"not": "a scim resource"})
-        if resp.status_code == 400:
-            results.append(ProbeResult(
-                "POST /Users invalid body (expect 400)", ProbeResult.PASS, phase=phase,
-            ))
-        else:
-            results.append(ProbeResult(
-                "POST /Users invalid body (expect 400)", ProbeResult.FAIL,
-                message=f"Expected 400, got {resp.status_code}", phase=phase,
-            ))
+        data = resp.json() if resp.body else None
+        ok, errs = rv.validate_error_response(data, 400, resp.status_code)
+        results.extend(_validation_results(
+            "POST /Users invalid body (expect 400)", phase, ok, errs,
+        ))
     except Exception as exc:
         results.append(ProbeResult(
             "POST /Users invalid body (expect 400)", ProbeResult.ERROR,
@@ -677,15 +785,11 @@ def test_error_handling(client: SCIMClient, rv: ServerResponseValidator) -> List
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
             # userName intentionally omitted
         })
-        if resp.status_code == 400:
-            results.append(ProbeResult(
-                "POST /Users missing userName (expect 400)", ProbeResult.PASS, phase=phase,
-            ))
-        else:
-            results.append(ProbeResult(
-                "POST /Users missing userName (expect 400)", ProbeResult.FAIL,
-                message=f"Expected 400, got {resp.status_code}", phase=phase,
-            ))
+        data = resp.json() if resp.body else None
+        ok, errs = rv.validate_error_response(data, 400, resp.status_code)
+        results.extend(_validation_results(
+            "POST /Users missing userName (expect 400)", phase, ok, errs,
+        ))
     except Exception as exc:
         results.append(ProbeResult(
             "POST /Users missing userName (expect 400)", ProbeResult.ERROR,

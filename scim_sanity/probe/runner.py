@@ -14,8 +14,11 @@ Safety mechanisms:
 import sys
 from typing import Any, Dict, List, Optional, Set
 
+import datetime
+
 from ..http_client import SCIMClient
 from ..response_validator import ServerResponseValidator
+from .. import __version__
 from .report import ProbeResult, print_results
 from .tests import (
     test_discovery,
@@ -51,6 +54,8 @@ def run_probe(
     accept_side_effects: bool = False,
     timeout: int = 30,
     rapid_agent_count: int = MAX_RAPID_AGENTS,
+    proxy: Optional[str] = None,
+    ca_bundle: Optional[str] = None,
 ) -> int:
     """Run the full conformance probe and return an exit code.
 
@@ -71,6 +76,8 @@ def run_probe(
                               and deletes real resources on the target server.
         timeout:              Per-request timeout in seconds.
         rapid_agent_count:    Number of agents for rapid lifecycle test (capped).
+        proxy:                HTTP/HTTPS proxy URL (e.g. ``"http://proxy.example.com:8080"``).
+        ca_bundle:            Path to a CA bundle file for TLS certificate verification.
     """
     # --- Safety gate: require explicit consent before running ----------------
     if not accept_side_effects:
@@ -86,6 +93,8 @@ def run_probe(
         password=password,
         tls_no_verify=tls_no_verify,
         timeout=timeout,
+        proxy=proxy,
+        ca_bundle=ca_bundle,
     )
 
     rv = ServerResponseValidator(strict=strict)
@@ -93,13 +102,8 @@ def run_probe(
     results: List[ProbeResult] = []
     created_resources: List[Dict[str, Any]] = []  # tracks resources for cleanup
 
-    # Report which mode we're running in
     mode_label = "strict" if strict else "compat"
-    results.append(ProbeResult(
-        f"Probe mode: {mode_label}", ProbeResult.PASS,
-        message=f"Validation mode: {mode_label}",
-        phase="Configuration",
-    ))
+    run_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Phase 1: Discovery
     results.extend(test_discovery(client, rv))
@@ -172,7 +176,8 @@ def run_probe(
         _cleanup(client, created_resources, results)
 
     # Output results
-    print_results(results, json_output=json_output)
+    print_results(results, json_output=json_output, mode=mode_label,
+                  version=__version__, timestamp=run_timestamp)
 
     # Exit code: warnings are OK, only FAIL and ERROR cause exit code 1
     has_failures = any(
