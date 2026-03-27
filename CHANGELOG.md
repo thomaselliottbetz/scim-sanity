@@ -104,17 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pre-provisioning validation workflows
   - CI/CD integration examples
   - Common SCIM operations and error handling
-- **Security and Compliance Documentation**: Added compliance guides referencing CIS and Microsoft Security Benchmarks
-  - CIS Azure Foundations Benchmark compliance
-  - CIS Google Workspace Benchmark compliance
-  - Microsoft Cloud Security Benchmark compliance
-  - Compliance validation workflows and reporting
+- **Security and Compliance Documentation**: Added compliance guide describing scim-sanity's actual compliance contributions (payload correctness, deprovisioning validation, audit trail detection)
 
 ### Documentation
 - Added Ansible integration section to README
 - Added integration guides in `docs/integrations/`
 - Added security and compliance documentation in `docs/security/`
-- Added reference materials for CIS and Microsoft benchmarks in `docs/reference/`
 
 ## [0.2.1] - 2025-12-15
 

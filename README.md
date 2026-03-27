@@ -1,6 +1,6 @@
 # scim-sanity
 
-Find out exactly where your SCIM server deviates from RFC 7643/7644 — before client integrations fail in production. Also validates SCIM payloads statically before they reach a server. Supports User, Group, Agent, and AgenticApplication resources, including agentic identity types per `draft-abbey-scim-agent-extension-00`.
+Test your SCIM server's RFC 7643/7644 conformance and validate payloads before they hit production — from the command line or a browser-based GUI built with React and Cloudscape.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,17 +9,24 @@ Find out exactly where your SCIM server deviates from RFC 7643/7644 — before c
 ## Features
 
 **scim-sanity** is a **pragmatic, production-oriented SCIM conformance and interoperability harness**:
-- **Server conformance probe** — Run a 7-phase CRUD lifecycle test against a live SCIM endpoint. Tests discovery, User/Group/Agent/AgenticApplication operations, search, pagination, and error handling.
-- **Payload validation (linting)** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
-- **Agentic identity support** — Validates Agent and AgenticApplication resources per IETF `draft-abbey-scim-agent-extension-00`.
+- **Server conformance probe** — CRUD lifecycle tests against a live SCIM endpoint covering discovery, User/Group/Agent/AgenticApplication operations, search, pagination, and error handling. Failures produce a prioritised Fix Summary — each issue with a trouble description, fix, and rationale.
+- **Payload validation** — Static SCIM JSON analysis before sending data to a server. Catches missing required attributes, immutable field violations, null value misuse, and schema URN errors.
+- **Example payload library** — Curated valid and invalid SCIM resources with RFC citations, loadable directly into the validator.
+- **Web GUI** — Browser-based interface built with React and Cloudscape Design System. Validate, probe, and browse examples without touching the terminal.
+- **Agentic identity support** — Agent and AgenticApplication resources per IETF `draft-abbey-scim-agent-extension-00`.
 - **Strict and compat modes** — Strict mode (default) treats all spec deviations as failures. Compat mode downgrades known real-world deviations (e.g., `application/json` instead of `application/scim+json`) to warnings.
-- **Behavioral, black-box testing** — Tests servers via real CRUD, search, and lifecycle flows against the failure modes that break real integrations.
-- **Minimal dependencies** — Requires only Click. The `requests` library is auto-detected and used when available for richer HTTP handling, but is not required.
+- **Minimal dependencies** — Core CLI requires only Click. The web GUI is opt-in via `pip install scim-sanity[web]`.
 
 ## Installation
 
 ```bash
 pip install scim-sanity
+```
+
+With the optional web GUI:
+
+```bash
+pip install 'scim-sanity[web]'
 ```
 
 Or from source:
@@ -29,7 +36,7 @@ git clone https://github.com/thomaselliottbetz/scim-sanity.git
 cd scim-sanity
 python -m venv venv
 source venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[web,dev]"
 ```
 
 ## Web GUI
@@ -153,11 +160,14 @@ The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP
 4. **Agent CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
    - Same sequence as User
    - Skipped if server does not advertise Agent support in `/ResourceTypes`
-   - **Agent Rapid Lifecycle** — create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
 
 5. **AgenticApplication CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
    - Same sequence as User
    - Skipped if server does not advertise AgenticApplication support
+
+5a. **Agent Rapid Lifecycle** (draft-abbey-scim-agent-extension-00)
+   - Create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
+   - Skipped if server does not support Agents
 
 6. **Search** (RFC 7644 §3.4.2, §8.1)
    - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
@@ -396,7 +406,7 @@ git clone https://github.com/thomaselliottbetz/scim-sanity.git
 cd scim-sanity
 python -m venv venv
 source venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[web,dev]"
 pytest -v
 ```
 

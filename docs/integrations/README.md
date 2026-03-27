@@ -5,7 +5,7 @@ Integration guides for using scim-sanity with identity providers. Each guide cov
 ## Available Guides
 
 - **[Microsoft Entra ID](./entra-id.md)** — Entra ID acts as a SCIM client, provisioning users to your application's SCIM server. Covers probing your server for Entra ID compatibility, the Enterprise User extension, and the `externalId` correlation pattern.
-- **[Google Workspace](./google-workspace.md)** — Google Workspace can act as either a SCIM client (provisioning to your app) or a SCIM server (receiving from an external IdP via Cloud Identity SCIM). Covers both scenarios.
+- **[Google Workspace](./google-workspace.md)** — Google Workspace as a SCIM server receiving inbound provisioning via the Cloud Identity SCIM API. Google's SCIM client behavior has not yet been independently verified.
 
 ## See Also
 
