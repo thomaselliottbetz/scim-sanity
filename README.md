@@ -32,6 +32,36 @@ source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+## Web GUI
+
+scim-sanity includes an optional browser-based interface built with React and the [AWS Cloudscape Design System](https://cloudscape.design/). The CLI remains the primary interface and is unchanged.
+
+### Installation
+
+```bash
+pip install 'scim-sanity[web]'
+```
+
+### Usage
+
+```bash
+scim-sanity web
+```
+
+Then open **http://127.0.0.1:8000** in your browser. Options:
+
+```bash
+scim-sanity web --port 8080 --host 0.0.0.0
+```
+
+### Pages
+
+| Page | Path | Description |
+|------|------|-------------|
+| **Validate** | `/validate` | Paste or load a SCIM JSON payload and validate it against RFC 7643/7644 rules. Supports full resources and PATCH operations. Load any example from the built-in library. |
+| **Probe** | `/probe` | Configure and run a live server conformance probe. Results are grouped by test phase with status indicators and a prioritised Fix Summary when failures are present. |
+| **Examples** | `/examples` | Browse 16 curated RFC example payloads. Filter by resource type (User, Group, Agent, AgenticApplication, PATCH) or validity. Load any example directly into the Validate page. |
+
 ## Server Conformance Probe
 
 Test a live SCIM server for RFC 7643/7644 conformance. The probe **creates, modifies, and deletes real resources** on the target server, then cleans up after itself.
@@ -190,7 +220,7 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "scim_sanity_version": "0.5.4",
+  "scim_sanity_version": "0.6.0",
   "mode": "strict",
   "timestamp": "2026-02-24 09:15:00",
   "summary": {
@@ -369,6 +399,30 @@ source venv/bin/activate
 pip install -e ".[dev]"
 pytest -v
 ```
+
+### Web GUI development
+
+Two processes run during development:
+
+```bash
+# Terminal 1 — Python API (auto-reloads on source changes)
+pip install -e ".[web]"
+uvicorn scim_sanity.api:app --reload --port 8000
+
+# Terminal 2 — Vite dev server with hot reload
+cd web
+npm install
+npm run dev          # http://localhost:5173, proxies /api/* to :8000
+```
+
+To build the frontend for production:
+
+```bash
+cd web
+npm run build        # outputs to web/dist/
+```
+
+The built static files are served automatically by `scim-sanity web` — no separate frontend process needed.
 
 ## Planned Improvements
 

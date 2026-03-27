@@ -18,6 +18,14 @@ class ValidationError:
         line_info = f" (line {self.line})" if self.line else ""
         return f"{self.message}{loc}{line_info}"
 
+    def to_dict(self):
+        d = {"message": self.message}
+        if self.path:
+            d["path"] = self.path
+        if self.line is not None:
+            d["line"] = self.line
+        return d
+
 
 class SCIMValidator:
     """Validates SCIM 2.0 User, Group, Agent, and AgenticApplication resources and PATCH operations."""

@@ -315,20 +315,20 @@ def _print_terminal(
     print()
 
 
-def _print_json(
+def build_results_dict(
     results: List[ProbeResult],
     mode: str = "strict",
     version: str = "",
     timestamp: str = "",
-):
-    """Render results as structured JSON with summary counts."""
+) -> Dict[str, Any]:
+    """Build a structured results dict (shared by JSON output and API)."""
     passed = sum(1 for r in results if r.status == ProbeResult.PASS)
     failed = sum(1 for r in results if r.status == ProbeResult.FAIL)
     warned = sum(1 for r in results if r.status == ProbeResult.WARN)
     skipped = sum(1 for r in results if r.status == ProbeResult.SKIP)
     errored = sum(1 for r in results if r.status == ProbeResult.ERROR)
 
-    output = {
+    return {
         "scim_sanity_version": version,
         "mode": mode,
         "timestamp": timestamp,
@@ -343,4 +343,13 @@ def _print_json(
         "issues": _build_fix_summary(results),
         "results": [r.to_dict() for r in results],
     }
-    print(json.dumps(output, indent=2))
+
+
+def _print_json(
+    results: List[ProbeResult],
+    mode: str = "strict",
+    version: str = "",
+    timestamp: str = "",
+):
+    """Render results as structured JSON with summary counts."""
+    print(json.dumps(build_results_dict(results, mode=mode, version=version, timestamp=timestamp), indent=2))

@@ -132,6 +132,8 @@ dmypy.json
 
 # Project specific
 broken.json2
+PLANNING.md
+web/node_modules/
 
 # CIS Benchmark reference materials (cannot be hosted per CIS licensing)
 docs/reference/cis-baselines/*.txt

@@ -100,7 +100,7 @@ class _SCIMGroup(click.Group):
               help="SCIM JSON file to validate", hidden=True)
 @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
 @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-@click.version_option(version="0.5.6")
+@click.version_option(version="0.6.0")
 @click.pass_context
 def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
     """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).
@@ -221,6 +221,29 @@ def probe(url, token, username, password, tls_no_verify, skip_cleanup,
         ca_bundle=ca_bundle,
     )
     sys.exit(exit_code)
+
+
+@main.command()
+@click.option("--port", default=8000, type=int, show_default=True, help="Port to listen on")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Host to bind to")
+def web(port: int, host: str):
+    """Start the scim-sanity web GUI.
+
+    Requires the [web] optional dependencies:
+      pip install 'scim-sanity[web]'
+    """
+    try:
+        import uvicorn
+    except ImportError:
+        click.echo(
+            "The web GUI requires additional dependencies.\n"
+            "Install them with:  pip install 'scim-sanity[web]'",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Starting scim-sanity web GUI at http://{host}:{port}")
+    uvicorn.run("scim_sanity.api:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":

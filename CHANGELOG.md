@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-27
+
+### Added
+- **Web GUI** (`scim-sanity web`) — optional browser-based interface built with React and the AWS Cloudscape Design System. Install with `pip install 'scim-sanity[web]'`.
+  - **Validate page** — interactive payload linter with JSON editor, operation toggle (full/PATCH), example dropdown, and error table
+  - **Probe page** — configure and run a live SCIM server conformance probe; results grouped by phase with expandable sections and Fix Summary
+  - **Examples page** — browsable RFC example payload library with resource type and validity filters; "Load in Validator" navigates to the Validate page with the payload pre-loaded
+- `scim_sanity/api.py` — FastAPI REST layer (`POST /api/validate`, `POST /api/probe`, `GET /api/examples`) wrapping the core library
+- `scim_sanity/examples.py` — curated catalog of 16 SCIM payloads (10 valid, 6 invalid/educational) covering User, Group, Agent, AgenticApplication, and PATCH operations
+- `[web]` optional dependency group in `pyproject.toml` (`fastapi`, `uvicorn`)
+- `ValidationError.to_dict()` for JSON serialization of validation errors
+- `run_probe_api()` in `probe/runner.py` — returns structured dict for API use; `build_results_dict()` extracted from `_print_json()` as shared helper
+
+### Changed
+- CLI `--version` now reports `0.6.0`
+
 ## [0.5.5] - 2026-02-24
 
 ### Added

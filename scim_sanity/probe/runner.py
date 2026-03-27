@@ -19,7 +19,7 @@ import datetime
 from ..http_client import SCIMClient
 from ..response_validator import ServerResponseValidator
 from .. import __version__
-from .report import ProbeResult, print_results
+from .report import ProbeResult, print_results, build_results_dict
 from .tests import (
     test_discovery,
     discover_supported_resources,
@@ -185,6 +185,106 @@ def run_probe(
         for r in results
     )
     return 1 if has_failures else 0
+
+
+def run_probe_api(
+    base_url: str,
+    token: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    tls_no_verify: bool = False,
+    skip_cleanup: bool = False,
+    resource_filter: Optional[str] = None,
+    strict: bool = True,
+    timeout: int = 30,
+) -> dict:
+    """Run the conformance probe and return a structured dict (for API use).
+
+    Side-effect consent is handled by the API caller (the web UI consent checkbox).
+    Results are returned as a dict matching the --json-output shape with an
+    added ``exit_code`` field and ``version`` alias for ``scim_sanity_version``.
+    """
+    rapid_agent_count = MAX_RAPID_AGENTS
+
+    client = SCIMClient(
+        base_url,
+        token=token,
+        username=username,
+        password=password,
+        tls_no_verify=tls_no_verify,
+        timeout=timeout,
+    )
+
+    rv = ServerResponseValidator(strict=strict)
+
+    results: List[ProbeResult] = []
+    created_resources: List[Dict[str, Any]] = []
+
+    mode_label = "strict" if strict else "compat"
+    run_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    results.extend(test_discovery(client, rv))
+
+    supported = discover_supported_resources(client)
+    requested = {resource_filter} if resource_filter else supported
+
+    if "User" in requested:
+        results.extend(test_user_lifecycle(client, rv, created_resources))
+    else:
+        results.append(ProbeResult(
+            "User CRUD Lifecycle", ProbeResult.SKIP,
+            message="User not in scope", phase="Phase 2 — User CRUD Lifecycle",
+        ))
+
+    if "Group" in requested:
+        results.extend(test_group_lifecycle(client, rv, created_resources))
+    else:
+        results.append(ProbeResult(
+            "Group CRUD Lifecycle", ProbeResult.SKIP,
+            message="Group not in scope", phase="Phase 3 — Group CRUD Lifecycle",
+        ))
+
+    if "Agent" in requested and "Agent" in supported:
+        results.extend(test_agent_lifecycle(client, rv, created_resources))
+    else:
+        reason = "not supported by server" if "Agent" not in supported else "not in scope"
+        results.append(ProbeResult(
+            "Agent CRUD Lifecycle", ProbeResult.SKIP,
+            message=f"Agent {reason}", phase="Phase 4 — Agent CRUD Lifecycle",
+        ))
+
+    if "AgenticApplication" in requested and "AgenticApplication" in supported:
+        results.extend(test_agentic_application_lifecycle(client, rv, created_resources))
+    else:
+        reason = "not supported by server" if "AgenticApplication" not in supported else "not in scope"
+        results.append(ProbeResult(
+            "AgenticApplication CRUD Lifecycle", ProbeResult.SKIP,
+            message=f"AgenticApplication {reason}",
+            phase="Phase 5 — AgenticApplication CRUD Lifecycle",
+        ))
+
+    if "Agent" in requested and "Agent" in supported:
+        results.extend(test_agent_rapid_lifecycle(
+            client, created_resources, count=rapid_agent_count,
+        ))
+    else:
+        results.append(ProbeResult(
+            "Agent Rapid Lifecycle", ProbeResult.SKIP,
+            message="Agent not supported or not in scope",
+            phase="Phase 5a — Agent Rapid Lifecycle",
+        ))
+
+    results.extend(test_search(client, rv))
+    results.extend(test_error_handling(client, rv))
+
+    if not skip_cleanup and created_resources:
+        _cleanup(client, created_resources, results)
+
+    d = build_results_dict(results, mode=mode_label, version=__version__, timestamp=run_timestamp)
+    has_failures = any(r.status in (ProbeResult.FAIL, ProbeResult.ERROR) for r in results)
+    d["exit_code"] = 1 if has_failures else 0
+    d["version"] = d.pop("scim_sanity_version")
+    return d
 
 
 def _print_side_effect_warning(base_url: str, resource_filter: Optional[str], json_output: bool):

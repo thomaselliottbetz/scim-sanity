@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scim-sanity"
-version = "0.5.6"
+version = "0.6.0"
 description = "Live SCIM server conformance testing and payload validation (RFC 7643/7644)"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -34,6 +34,10 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "jsonschema>=4.0.0",
+]
+web = [
+    "fastapi",
+    "uvicorn",
 ]
 
 [project.scripts]
