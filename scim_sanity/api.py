@@ -47,9 +47,37 @@ class ProbeRequest(BaseModel):
     tls_no_verify: bool = False
     skip_cleanup: bool = False
     timeout: int = 30
+    profile: Optional[str] = None
+    extra_user_fields: Optional[Dict[str, Any]] = None
+    user_domain: Optional[str] = None
 
 
-@app.post("/api/validate")
+_VALIDATE_RESPONSE_EXAMPLE = {
+    "valid": False,
+    "errors": [
+        {
+            "message": "Missing required attribute: 'userName'",
+            "path": "userName",
+            "schema": "urn:ietf:params:scim:schemas:core:2.0:User",
+        },
+        {
+            "message": "Immutable attribute 'id' should not be set by client",
+            "path": "id",
+            "schema": "urn:ietf:params:scim:schemas:core:2.0:User",
+        },
+    ],
+}
+
+
+@app.post(
+    "/api/validate",
+    responses={
+        200: {
+            "description": "Validation result with list of RFC conformance errors",
+            "content": {"application/json": {"example": _VALIDATE_RESPONSE_EXAMPLE}},
+        }
+    },
+)
 def validate(req: ValidateRequest):
     """Validate a SCIM payload against RFC 7643/7644 rules."""
     validator = SCIMValidator()
@@ -60,7 +88,59 @@ def validate(req: ValidateRequest):
     }
 
 
-@app.post("/api/probe")
+_PROBE_RESPONSE_EXAMPLE = {
+    "scim_sanity_version": __version__,
+    "mode": "strict",
+    "timestamp": "2026-04-05 09:15:00",
+    "summary": {
+        "total": 31,
+        "passed": 14,
+        "failed": 13,
+        "warnings": 1,
+        "skipped": 3,
+        "errors": 0,
+    },
+    "issues": [
+        {
+            "priority": "P3",
+            "title": "Missing meta timestamps on resource responses",
+            "fix": "Include meta.created and meta.lastModified in all resource representations",
+            "rationale": "Without meta.lastModified, incremental sync is impossible — clients must full-scan every cycle or risk missing updates.",
+            "affected_tests": 2,
+        },
+        {
+            "priority": "E1",
+            "title": "PUT not supported — server returns 405 Method Not Allowed",
+            "fix": "Support PUT /Users/<id> and PUT /Groups/<id>, or document the omission in ServiceProviderConfig",
+            "rationale": "RFC 7644 §3.5.1 says servers SHOULD support PUT; clients that issue PUT will receive 405 and may halt provisioning.",
+            "affected_tests": 2,
+        },
+    ],
+    "results": [
+        {
+            "name": "GET /ServiceProviderConfig",
+            "status": "pass",
+            "phase": "Phase 1 — Discovery",
+        },
+        {
+            "name": "POST /Users",
+            "status": "fail",
+            "message": "meta.created must be present in server response (RFC 7643 §3.1) at meta.created",
+            "phase": "Phase 2 — User CRUD Lifecycle",
+        },
+    ],
+}
+
+
+@app.post(
+    "/api/probe",
+    responses={
+        200: {
+            "description": "Probe results with per-test status, summary counts, and prioritised Fix Summary",
+            "content": {"application/json": {"example": _PROBE_RESPONSE_EXAMPLE}},
+        }
+    },
+)
 def probe(req: ProbeRequest):
     """Run a conformance probe against a live SCIM server.
 
@@ -76,10 +156,49 @@ def probe(req: ProbeRequest):
         resource_filter=req.resource,
         strict=req.strict,
         timeout=req.timeout,
+        profile=req.profile,
+        extra_user_fields=req.extra_user_fields,
+        user_domain=req.user_domain,
     )
 
 
-@app.get("/api/examples")
+_EXAMPLES_RESPONSE_EXAMPLE = {
+    "examples": [
+        {
+            "id": "valid-user-minimal",
+            "name": "Minimal valid User",
+            "description": "Smallest valid User payload — only the required userName attribute.",
+            "resource_type": "User",
+            "valid": True,
+            "payload": {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                "userName": "john.doe@example.com",
+            },
+        },
+        {
+            "id": "invalid-user-missing-username",
+            "name": "User missing userName",
+            "description": "Fails validation: userName is required per RFC 7643 §4.1.1.",
+            "resource_type": "User",
+            "valid": False,
+            "payload": {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                "name": {"givenName": "John"},
+            },
+        },
+    ]
+}
+
+
+@app.get(
+    "/api/examples",
+    responses={
+        200: {
+            "description": "Curated RFC example payload library with valid and invalid cases",
+            "content": {"application/json": {"example": _EXAMPLES_RESPONSE_EXAMPLE}},
+        }
+    },
+)
 def examples():
     """Return the curated example payload library."""
     from .examples import get_public_examples
@@ -89,7 +208,7 @@ def examples():
 # Catch-all: serve index.html for any path not matched above so React Router
 # can handle client-side routes (/validate, /probe, /examples).
 # Must be defined last so it never shadows /api/* endpoints.
-@app.get("/{full_path:path}")
+@app.get("/{full_path:path}", include_in_schema=False)
 def serve_frontend(full_path: str):
     index = _WEB_DIST / "index.html"
     if index.exists():

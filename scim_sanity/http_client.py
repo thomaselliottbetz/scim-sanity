@@ -126,12 +126,14 @@ class SCIMClient:
 
     # -- Internals -----------------------------------------------------------
 
-    def _build_headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def _build_headers(self, extra: Optional[Dict[str, str]] = None, method: str = "") -> Dict[str, str]:
         """Build the default SCIM request headers with auth credentials."""
-        headers = {
-            "Accept": "application/scim+json",
-            "Content-Type": "application/scim+json",
-        }
+        headers: Dict[str, str] = {}
+        # DELETE responses have no body, so Accept is not meaningful.
+        # Some servers (e.g. Entra) reject DELETE requests that include Accept.
+        if method.upper() != "DELETE":
+            headers["Accept"] = "application/scim+json"
+            headers["Content-Type"] = "application/scim+json"
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         elif self.username and self.password:
@@ -156,7 +158,7 @@ class SCIMClient:
         ``Retry-After`` header (or ``_DEFAULT_RETRY_AFTER`` if absent).
         """
         url = f"{self.base_url}{path}"
-        headers = self._build_headers(extra_headers)
+        headers = self._build_headers(extra_headers, method=method)
 
         for attempt in range(_MAX_RETRIES + 1):
             if HAS_REQUESTS:

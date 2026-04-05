@@ -56,6 +56,10 @@ def run_probe(
     rapid_agent_count: int = MAX_RAPID_AGENTS,
     proxy: Optional[str] = None,
     ca_bundle: Optional[str] = None,
+    profile: Optional[str] = None,
+    extra_user_fields: Optional[Dict[str, Any]] = None,
+    extra_group_fields: Optional[Dict[str, Any]] = None,
+    user_domain: Optional[str] = None,
 ) -> int:
     """Run the full conformance probe and return an exit code.
 
@@ -78,6 +82,14 @@ def run_probe(
         rapid_agent_count:    Number of agents for rapid lifecycle test (capped).
         proxy:                HTTP/HTTPS proxy URL (e.g. ``"http://proxy.example.com:8080"``).
         ca_bundle:            Path to a CA bundle file for TLS certificate verification.
+        profile:              Named server profile (e.g. ``"entra"``).  Injects known
+                              server-specific fields into test payloads.
+        extra_user_fields:    Extra fields merged into user creation payloads.
+                              Takes precedence over profile fields.
+        extra_group_fields:   Extra fields merged into group creation payloads.
+                              Takes precedence over profile fields.
+        user_domain:          Domain for generated userNames (e.g. ``"example.com"``).
+                              Required for servers that validate userName domains.
     """
     # --- Safety gate: require explicit consent before running ----------------
     if not accept_side_effects:
@@ -85,6 +97,16 @@ def run_probe(
         return 1
 
     rapid_agent_count = min(rapid_agent_count, MAX_RAPID_AGENTS)
+
+    # Resolve profile fields, then merge explicit overrides on top
+    if profile:
+        from ..profiles import get_extra_user_fields, get_extra_group_fields
+        resolved_user = get_extra_user_fields(profile, user_domain=user_domain)
+        resolved_group = get_extra_group_fields(profile, user_domain=user_domain)
+        resolved_user.update(extra_user_fields or {})
+        resolved_group.update(extra_group_fields or {})
+        extra_user_fields = resolved_user or None
+        extra_group_fields = resolved_group or None
 
     client = SCIMClient(
         base_url,
@@ -116,7 +138,7 @@ def run_probe(
 
     # Phase 2: User CRUD
     if "User" in requested:
-        results.extend(test_user_lifecycle(client, rv, created_resources))
+        results.extend(test_user_lifecycle(client, rv, created_resources, extra_user_fields))
     else:
         results.append(ProbeResult(
             "User CRUD Lifecycle", ProbeResult.SKIP,
@@ -125,7 +147,7 @@ def run_probe(
 
     # Phase 3: Group CRUD
     if "Group" in requested:
-        results.extend(test_group_lifecycle(client, rv, created_resources))
+        results.extend(test_group_lifecycle(client, rv, created_resources, extra_group_fields))
     else:
         results.append(ProbeResult(
             "Group CRUD Lifecycle", ProbeResult.SKIP,
@@ -197,6 +219,9 @@ def run_probe_api(
     resource_filter: Optional[str] = None,
     strict: bool = True,
     timeout: int = 30,
+    profile: Optional[str] = None,
+    extra_user_fields: Optional[Dict[str, Any]] = None,
+    extra_group_fields: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """Run the conformance probe and return a structured dict (for API use).
 
@@ -205,6 +230,15 @@ def run_probe_api(
     added ``exit_code`` field and ``version`` alias for ``scim_sanity_version``.
     """
     rapid_agent_count = MAX_RAPID_AGENTS
+
+    if profile:
+        from ..profiles import get_extra_user_fields, get_extra_group_fields
+        resolved_user = get_extra_user_fields(profile)
+        resolved_group = get_extra_group_fields(profile)
+        resolved_user.update(extra_user_fields or {})
+        resolved_group.update(extra_group_fields or {})
+        extra_user_fields = resolved_user or None
+        extra_group_fields = resolved_group or None
 
     client = SCIMClient(
         base_url,
@@ -229,7 +263,7 @@ def run_probe_api(
     requested = {resource_filter} if resource_filter else supported
 
     if "User" in requested:
-        results.extend(test_user_lifecycle(client, rv, created_resources))
+        results.extend(test_user_lifecycle(client, rv, created_resources, extra_user_fields))
     else:
         results.append(ProbeResult(
             "User CRUD Lifecycle", ProbeResult.SKIP,
@@ -237,7 +271,7 @@ def run_probe_api(
         ))
 
     if "Group" in requested:
-        results.extend(test_group_lifecycle(client, rv, created_resources))
+        results.extend(test_group_lifecycle(client, rv, created_resources, extra_group_fields))
     else:
         results.append(ProbeResult(
             "Group CRUD Lifecycle", ProbeResult.SKIP,

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-04-05
+
+### Added
+- **Named server profiles** (`--profile entra`) — inject non-RFC payload fields required by specific servers. Profiles are applied before `--extra-user-fields` overrides, so explicit flags always win.
+- **`scim-sanity profiles` subcommand** — list all profiles (`scim-sanity profiles`) or show full detail for a specific profile (`scim-sanity profiles entra`): required fields, known RFC deviations with RFC citations, recommended command, and external references.
+- **`entra` profile** for Microsoft Entra ID SCIM server — automatically injects `password`, `mailNickname`, enterprise extension schema, and `urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User` for Users; `mailEnabled`, `mailNickname`, `securityEnabled`, and `urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group` for Groups. Documents 12 known Entra RFC deviations.
+- **`--extra-user-fields`** CLI option — merge arbitrary JSON fields into user creation payloads without writing a profile (e.g. `--extra-user-fields '{"password":"secret"}'`).
+- **`--user-domain`** CLI option — override the domain portion of generated `userName` values. Required for servers (including Entra) that validate `userName` against a list of verified tenant domains.
+- **Named Fix Summary patterns for Entra deviations** — E1 (PUT 405), E1b (stale state after failed PUT), E2 (PATCH 204), E3 (lowercase `meta.resourceType`), E4 (nonexistent resource returns 400 not 404), E5 (group member referential integrity). Eliminates `[?]` catch-all entries when probing Entra with `--compat`.
+- **Combined message+phase matching in Fix Summary** — `_KNOWN_ISSUES` entries can now match on both `message` substring and `phase` prefix simultaneously, enabling precise targeting of failures that share a generic message (e.g. "Expected 200, got 400") across multiple phases.
+
+### Fixed
+- **DELETE request header rejection** — Some servers (including Entra) reject DELETE requests that include `Accept: application/scim+json`, returning 400. The HTTP client no longer sends `Accept` or `Content-Type` headers on DELETE requests.
+- **DELETE body false positive** — The "DELETE 204 response should have no body" validator check was firing on non-204 error responses (`if body` instead of `elif body`). Fixed so the check only triggers when the status is actually 204.
+- **Group PATCH used `active` attribute** — The probe was sending `PATCH active=false` to Groups. RFC 7643 §4.2 does not define `active` on Group resources. Groups now use `PATCH displayName` instead.
+- **Case-insensitive `Resources` key in ResourceTypes discovery** — Entra returns `"resources"` (lowercase) in its ResourceTypes response. The discovery parser now falls back to the lowercase key when `"Resources"` is absent, preventing User/Group CRUD phases from being incorrectly skipped.
+
 ## [0.6.0] - 2026-03-27
 
 ### Added

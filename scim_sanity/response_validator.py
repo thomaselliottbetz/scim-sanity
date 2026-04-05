@@ -330,8 +330,10 @@ class ServerResponseValidator:
             errors.append(ServerValidationError(
                 f"Expected HTTP 204 for DELETE, got {actual_status} (RFC 7644 §3.6)"
             ))
-        # Some servers return a body on 204 — technically wrong, but common
-        if body and body.strip():
+        # Some servers return a body on 204 — technically wrong, but common.
+        # Only check for body when the status is actually 204; error responses
+        # legitimately include a body and should not trigger this warning.
+        elif body and body.strip():
             errors.append(ServerValidationError(
                 "DELETE 204 response should have no body (RFC 7644 §3.6)",
                 severity=self._sev(is_strict_only=True),

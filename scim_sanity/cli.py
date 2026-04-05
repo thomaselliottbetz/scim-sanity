@@ -21,6 +21,8 @@ import sys
 import json
 from typing import Optional
 
+from .profiles import PROFILES, PROFILE_DEVIATIONS, PROFILE_COMMANDS, PROFILE_REFERENCES
+
 import click
 
 from .validator import validate_file, validate_string, SCIMValidator
@@ -100,7 +102,7 @@ class _SCIMGroup(click.Group):
               help="SCIM JSON file to validate", hidden=True)
 @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
 @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-@click.version_option(version="0.6.0")
+@click.version_option(version="0.7.0")
 @click.pass_context
 def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
     """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).
@@ -113,6 +115,8 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
       scim-sanity --patch <file>      Validate a SCIM PATCH operation file
       scim-sanity --stdin             Read JSON from stdin
       scim-sanity probe <url>         Probe a SCIM server for conformance
+      scim-sanity profiles            List server profiles (Entra, etc.)
+      scim-sanity profiles entra      Show Entra deviations and recommended command
     """
     # If a subcommand (e.g. "probe") was invoked, skip default validation
     if ctx.invoked_subcommand is not None:
@@ -166,9 +170,15 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
 @click.option("--timeout", default=30, type=int, help="Per-request timeout in seconds")
 @click.option("--proxy", default=None, help="HTTP/HTTPS proxy URL")
 @click.option("--ca-bundle", default=None, type=click.Path(exists=True), help="Path to custom CA certificate bundle")
+@click.option("--profile", default=None, type=click.Choice(list(PROFILES.keys())),
+              help="Named server profile (e.g. entra). Injects known server-specific fields into test payloads.")
+@click.option("--extra-user-fields", default=None,
+              help='Extra JSON fields merged into user creation payloads, e.g. \'{"password":"secret"}\'')
+@click.option("--user-domain", default=None,
+              help="Domain for generated userNames (e.g. example.com). Required for servers that validate userName domains.")
 def probe(url, token, username, password, tls_no_verify, skip_cleanup,
           json_output, resource, strict, i_accept_side_effects, timeout,
-          proxy, ca_bundle):
+          proxy, ca_bundle, profile, extra_user_fields, user_domain):
     """Probe a live SCIM server for RFC 7643/7644 conformance.
 
     Runs a 7-phase CRUD lifecycle test sequence against the server at URL.
@@ -205,6 +215,14 @@ def probe(url, token, username, password, tls_no_verify, skip_cleanup,
     """
     from .probe.runner import run_probe
 
+    parsed_extra_user_fields = None
+    if extra_user_fields:
+        try:
+            parsed_extra_user_fields = json.loads(extra_user_fields)
+        except json.JSONDecodeError as e:
+            click.echo(f"Error: --extra-user-fields is not valid JSON: {e}", err=True)
+            sys.exit(1)
+
     exit_code = run_probe(
         url,
         token=token,
@@ -219,8 +237,85 @@ def probe(url, token, username, password, tls_no_verify, skip_cleanup,
         timeout=timeout,
         proxy=proxy,
         ca_bundle=ca_bundle,
+        profile=profile,
+        extra_user_fields=parsed_extra_user_fields,
+        user_domain=user_domain,
     )
     sys.exit(exit_code)
+
+
+@main.command()
+@click.argument("profile_name", required=False, default=None, metavar="[PROFILE]")
+def profiles(profile_name: Optional[str]):
+    """Show known SCIM server profiles and their deviations.
+
+    \b
+    Usage:
+      scim-sanity profiles              List all available profiles
+      scim-sanity profiles entra        Show full details for the 'entra' profile
+    """
+    if profile_name is None:
+        # List all profiles
+        click.echo(_colorize("Available profiles:", "bold"))
+        click.echo()
+        for name, description in PROFILES.items():
+            click.echo(f"  {_colorize(name, 'blue'):<30}  {description}")
+        click.echo()
+        click.echo(f"Use '{_colorize('scim-sanity profiles <name>', 'bold')}' for details.")
+        return
+
+    if profile_name not in PROFILES:
+        click.echo(
+            _colorize(f"Unknown profile '{profile_name}'. ", "red")
+            + f"Available profiles: {', '.join(PROFILES.keys())}",
+            err=True,
+        )
+        sys.exit(1)
+
+    description = PROFILES[profile_name]
+    deviations = PROFILE_DEVIATIONS.get(profile_name, [])
+    command = PROFILE_COMMANDS.get(profile_name, "")
+    references = PROFILE_REFERENCES.get(profile_name, [])
+
+    # Header
+    title = f"{description}"
+    click.echo()
+    click.echo(_colorize(title, "bold"))
+    click.echo(_colorize("=" * len(title), "bold"))
+    click.echo()
+
+    # Recommended command
+    if command:
+        click.echo(_colorize("Recommended command:", "blue"))
+        for line in command.splitlines():
+            click.echo(f"  {line}")
+        click.echo()
+
+    # Required fields injected by the profile
+    if profile_name == "entra":
+        click.echo(_colorize("Required payload fields (non-RFC, injected automatically):", "blue"))
+        click.echo("  Users:   password, mailNickname, enterprise extension schema,")
+        click.echo("           urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User")
+        click.echo("  Groups:  mailEnabled, mailNickname, securityEnabled,")
+        click.echo("           urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group")
+        click.echo()
+
+    # Known deviations
+    if deviations:
+        click.echo(_colorize(f"Known RFC deviations ({len(deviations)}):", "blue"))
+        click.echo()
+        for i, dev in enumerate(deviations, 1):
+            click.echo(f"  {_colorize(f'[{i}]', 'yellow')} {dev['description']}")
+            click.echo(f"       RFC:  {dev['rfc']}")
+            click.echo(f"       Fix:  {dev['recommendation']}")
+            click.echo()
+
+    # References
+    if references:
+        click.echo(_colorize("References:", "blue"))
+        for ref in references:
+            click.echo(f"  {ref}")
+        click.echo()
 
 
 @main.command()

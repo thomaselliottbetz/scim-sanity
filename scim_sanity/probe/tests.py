@@ -297,10 +297,18 @@ def _crud_lifecycle(
             message=str(exc), phase=phase,
         ))
 
-    # -- PATCH (set active=false) -------------------------------------------
-    patch_payload = make_patch([
-        {"op": "replace", "path": "active", "value": False},
-    ])
+    # -- PATCH -------------------------------------------
+    # For Users (and Agent/AgenticApplication): PATCH active=false.
+    # For Groups: active is not a defined attribute (RFC 7643 §4.2), so
+    # PATCH displayName instead — still exercises the PATCH flow.
+    if resource_type == "Group":
+        patch_payload = make_patch([
+            {"op": "replace", "path": "displayName", "value": f"scim-sanity-test-patched-{resource_id[:8]}"},
+        ])
+    else:
+        patch_payload = make_patch([
+            {"op": "replace", "path": "active", "value": False},
+        ])
     try:
         resp = client.patch(f"{endpoint}/{resource_id}", patch_payload)
     except Exception as exc:
@@ -504,7 +512,7 @@ def discover_supported_resources(client: SCIMClient) -> Set[str]:
         if resp.status_code == 200 and resp.body:
             data = resp.json()
             # Response could be a ListResponse wrapper or a bare array
-            resources = data if isinstance(data, list) else data.get("Resources", [])
+            resources = data if isinstance(data, list) else data.get("Resources", data.get("resources", []))
             return {r["name"] for r in resources if "name" in r}
     except Exception:
         pass
@@ -518,10 +526,12 @@ def discover_supported_resources(client: SCIMClient) -> Set[str]:
 def test_user_lifecycle(
     client: SCIMClient, rv: ServerResponseValidator,
     created_resources: List[Dict[str, Any]],
+    extra_user_fields: Optional[Dict[str, Any]] = None,
 ) -> List[ProbeResult]:
     """Phase 2 — Run a full CRUD lifecycle for User resources."""
+    make_fn = (lambda: make_user(extra=extra_user_fields)) if extra_user_fields else make_user
     return _crud_lifecycle(
-        client, rv, "User", "/Users", make_user,
+        client, rv, "User", "/Users", make_fn,
         "Phase 2 — User CRUD Lifecycle", created_resources,
     )
 
@@ -529,13 +539,15 @@ def test_user_lifecycle(
 def test_group_lifecycle(
     client: SCIMClient, rv: ServerResponseValidator,
     created_resources: List[Dict[str, Any]],
+    extra_group_fields: Optional[Dict[str, Any]] = None,
 ) -> List[ProbeResult]:
     """Phase 3 — Run a full CRUD lifecycle for Group resources.
 
     Includes additional PATCH tests for add/remove members.
     """
+    make_fn = (lambda: make_group(extra=extra_group_fields)) if extra_group_fields else make_group
     return _crud_lifecycle(
-        client, rv, "Group", "/Groups", make_group,
+        client, rv, "Group", "/Groups", make_fn,
         "Phase 3 — Group CRUD Lifecycle", created_resources,
     )
 

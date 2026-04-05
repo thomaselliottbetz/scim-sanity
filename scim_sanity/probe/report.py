@@ -19,8 +19,10 @@ from typing import Any, Dict, List, Tuple
 # Each entry: (priority, title, message_substring_or_None, phase_prefix_or_None,
 #              rationale, fix)
 #
-# message_substring: matched against ProbeResult.message (None = use phase_prefix)
-# phase_prefix:      matched against ProbeResult.phase   (None = use message_substring)
+# message_substring: matched against ProbeResult.message (substring, case-insensitive).
+#                    If both msg_substr and phase_prefix are set, BOTH must match.
+# phase_prefix:      matched against ProbeResult.phase (startswith).
+#                    If both msg_substr and phase_prefix are set, BOTH must match.
 # rationale:         one sentence explaining why this matters to a product/engineering audience
 # fix:               one sentence describing the corrective action
 # ---------------------------------------------------------------------------
@@ -72,6 +74,69 @@ _KNOWN_ISSUES: List[Tuple[str, str, Any, Any, str, str]] = [
         "but programmatic error parsers that expect this field will fail or fall back "
         "to less specific handling.",
         'Include "status": "<http_code>" in all SCIM error response JSON bodies',
+    ),
+    (
+        "E1",
+        "PUT not supported — server returns 405 Method Not Allowed",
+        "got 405",
+        None,
+        "RFC 7644 §3.5.1 says servers SHOULD support PUT for full resource replacement; "
+        "clients that issue PUT (including many enterprise provisioning systems) will "
+        "receive 405 and may halt provisioning or log persistent errors.",
+        "Support PUT /Users/<id> and PUT /Groups/<id>, or document the omission in "
+        "ServiceProviderConfig (supported.patch=true, supported.put=false)",
+    ),
+    (
+        "E2",
+        "PATCH returns 204 No Content instead of 200 with updated resource",
+        "got 204",
+        None,
+        "RFC 7644 §3.5.2 says the server SHOULD return the modified resource; clients "
+        "that rely on the PATCH response to update local state will see stale data and "
+        "may issue a redundant GET or silently diverge from server state.",
+        "Return HTTP 200 with the full updated resource body on successful PATCH",
+    ),
+    (
+        "E3",
+        "meta.resourceType returned in lowercase instead of PascalCase",
+        "does not match expected",
+        None,
+        "RFC 7643 §3.1 defines resourceType values as 'User' and 'Group' (PascalCase); "
+        "clients that switch on resourceType for routing or schema lookup will silently "
+        "misroute or discard every resource.",
+        "Return meta.resourceType as 'User' and 'Group' (PascalCase) per RFC 7643 §3.1",
+    ),
+    (
+        "E4",
+        "GET nonexistent resource returns 400 instead of 404",
+        "Expected HTTP 404, got 400",
+        None,
+        "RFC 7644 §3.4.1 requires 404 for unknown resources; clients that test for 404 "
+        "to confirm deletion will incorrectly conclude the resource still exists and "
+        "may retry delete operations indefinitely.",
+        "Return 404 Not Found (not 400) when a resource id is syntactically valid but not found",
+    ),
+    (
+        "E1b",
+        "Resource state unchanged after PUT — server did not apply the update",
+        "Expected displayName=",
+        None,
+        "Direct consequence of E1 (PUT 405) — the resource was never updated, so the "
+        "subsequent GET confirms stale state; clients relying on PUT to modify resources "
+        "will silently write no changes.",
+        "Use PATCH for all resource updates; PUT is not supported on this server",
+    ),
+    (
+        "E5",
+        "Group member PATCH rejected — server enforces referential integrity on member ids",
+        "got 400",
+        "Phase 3",
+        "RFC 7644 §3.5.2 does not require servers to validate that member ids exist; "
+        "strict referential integrity means provisioning flows that add a group member "
+        "before the user record is created will fail, breaking common eventual-consistency "
+        "provisioning patterns.",
+        "Accept member ids without existence validation, or document the constraint so "
+        "clients can sequence user creation before group membership assignment",
     ),
 ]
 
@@ -169,7 +234,14 @@ def _build_fix_summary(results: List[ProbeResult]) -> List[Dict[str, Any]]:
     issues = []
     matched_ids: set = set()
     for priority, title, msg_substr, phase_prefix, rationale, fix in _KNOWN_ISSUES:
-        if msg_substr is not None:
+        if msg_substr is not None and phase_prefix is not None:
+            # Both conditions must match
+            affected = [
+                r for r in failures
+                if msg_substr.lower() in r.message.lower()
+                and r.phase and r.phase.startswith(phase_prefix)
+            ]
+        elif msg_substr is not None:
             affected = [
                 r for r in failures
                 if msg_substr.lower() in r.message.lower()
