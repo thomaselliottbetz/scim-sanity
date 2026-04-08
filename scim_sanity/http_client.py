@@ -196,6 +196,10 @@ class SCIMClient:
 
         if self.proxy:
             kwargs["proxies"] = {"http": self.proxy, "https": self.proxy}
+        else:
+            # Suppress system/env proxy lookup so SSH tunnels and local targets
+            # are not routed through macOS system proxies or HTTPS_PROXY env vars.
+            kwargs["proxies"] = {"http": None, "https": None}
 
         if payload is not None:
             kwargs["json"] = payload

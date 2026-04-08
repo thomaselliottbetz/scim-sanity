@@ -20,7 +20,7 @@ scim-sanity probe https://your-app.example.com/scim/v2 \
     --i-accept-side-effects
 ```
 
-The probe runs a full 7-phase CRUD lifecycle test and reports RFC 7643/7644 conformance issues. When failures are present, a prioritised Fix Summary explains what to fix and why.
+The probe runs a full 7-phase CRUD lifecycle test and reports RFC 7643/7644 conformance issues. When failures are present, a prioritized Fix Summary explains what to fix and why.
 
 ```bash
 # Compat mode — known real-world deviations become warnings instead of failures

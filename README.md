@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/thomaselliottbetz/scim-sanity/main.svg)](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
 
-scim-sanity catches SCIM integration bugs before and after deployment. Run the probe against a live server to get a prioritised list of RFC 7643/7644 violations with fix guidance. Lint payloads before they're sent. Call the REST API to embed conformance testing in your own pipelines or dashboards. Named server profiles (starting with Microsoft Entra ID) handle the non-RFC fields real servers require and tell you exactly why your requests are failing.
+scim-sanity catches SCIM integration bugs before and after deployment. Run the probe against a live server to get a prioritized list of RFC 7643/7644 violations with fix guidance. Lint payloads before they're sent. Call the REST API to embed conformance testing in your own pipelines or dashboards. Named server profiles (starting with Microsoft Entra ID) handle the non-RFC fields real servers require and tell you exactly why your requests are failing.
 
 ## Three ways to use it
 
@@ -70,7 +70,7 @@ scim-sanity web --port 8080 --host 0.0.0.0
 | Page | Path | Description |
 |------|------|-------------|
 | **Validate** | `/validate` | Paste or load a SCIM JSON payload and validate it against RFC 7643/7644 rules. Supports full resources and PATCH operations. Load any example from the built-in library. |
-| **Probe** | `/probe` | Configure and run a live server conformance probe. Results are grouped by test phase with status indicators and a prioritised Fix Summary when failures are present. |
+| **Probe** | `/probe` | Configure and run a live server conformance probe. Results are grouped by test phase with status indicators and a prioritized Fix Summary when failures are present. |
 | **Examples** | `/examples` | Browse 16 curated RFC example payloads. Filter by resource type (User, Group, Agent, AgenticApplication, PATCH) or validity. Load any example directly into the Validate page. |
 
 ---
@@ -262,6 +262,7 @@ Available profiles:
 | Profile | Server | What it injects |
 |---------|--------|-----------------|
 | `entra` | Microsoft Entra ID SCIM server | `password`, `mailNickname`, enterprise + Microsoft Entra extension schemas for Users; `mailEnabled`, `mailNickname`, `securityEnabled`, Entra Group extension for Groups |
+| `fortiauthenticator` | FortiAuthenticator SCIM server | None — use `--compat` for response-envelope deviations (e.g. Content-Type, missing meta timestamps) |
 
 Use `--profile` with `--compat` for the most useful output against known non-conformant servers — profiles handle the request side, compat mode handles the response side:
 
@@ -425,7 +426,7 @@ scim-sanity attempts to behave accordingly by retrying on 429, validating bounda
 
 ### Fix Summary
 
-When failures are present, the probe appends a prioritised **Fix Summary** after the results. Each entry has three lines:
+When failures are present, the probe appends a prioritized **Fix Summary** after the results. Each entry has three lines:
 
 ```
   [P1] Trouble: Wrong Content-Type on SCIM responses (12 tests affected)
@@ -434,7 +435,7 @@ When failures are present, the probe appends a prioritised **Fix Summary** after
                   is rejected regardless of whether the body is otherwise correct.
 ```
 
-Issues use a two-tier naming scheme: `P`-prefixed entries (P1–P5) are general RFC conformance issues applicable to any SCIM server; `E`-prefixed entries (E1, E2, …) are named deviations specific to a known server, surfaced when a profile is active. `E1b` and similar suffixes denote cascade effects of a parent deviation. Issues are ordered by severity (P1 most critical). The fix summary is omitted when all tests pass. In JSON output mode, the same information is available as an `issues` array.
+Issues use a two-tier naming scheme: `P`-prefixed entries (P1–P5) are general RFC conformance issues applicable to any SCIM server; `E`-prefixed entries (E1, E2, …) are named deviations specific to a known server, surfaced when a profile is active. `E1b` and similar suffixes denote cascade effects of a parent deviation. Issues are ordered by severity (P1 most critical). The fix summary is omitted when all tests pass. In JSON output mode, the same information is available as an `issues` array. Priority rankings are debatable — feedback and dispute are welcome.
 
 ### JSON Output (Stable Interface)
 

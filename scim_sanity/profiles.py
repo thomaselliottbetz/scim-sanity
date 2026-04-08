@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 # Registry of known profiles: name → human-readable description
 PROFILES: Dict[str, str] = {
     "entra": "Microsoft Entra ID SCIM server — adds required password field",
+    "fortiauthenticator": "FortiAuthenticator SCIM server — response envelope deviations; no payload injection required",
 }
 
 
@@ -83,6 +84,33 @@ PROFILE_DEVIATIONS: Dict[str, List[Dict[str, str]]] = {
             "recommendation": "Use --profile entra to inject required extension fields automatically",
         },
     ],
+    "fortiauthenticator": [
+        {
+            "description": "Responses use Content-Type 'text/html' instead of 'application/scim+json'",
+            "rfc": "RFC 7644 §8.1 — SCIM responses MUST be identified as application/scim+json",
+            "recommendation": "Set Content-Type: application/scim+json on all responses served from the SCIM base path (e.g. /scim/v2/)",
+        },
+        {
+            "description": "Created/updated resources missing meta.created and meta.lastModified timestamps",
+            "rfc": "RFC 7643 §3.1 — meta.created and meta.lastModified are required",
+            "recommendation": "Include meta.created and meta.lastModified in all resource representations",
+        },
+        {
+            "description": "POST create responses (201) missing Location header",
+            "rfc": "RFC 7644 §3.3 — Location header should be present on 201 Created",
+            "recommendation": "Return Location: <base>/<resource>/<id> on all create (POST) responses",
+        },
+        {
+            "description": "Error response bodies missing required 'status' field",
+            "rfc": "RFC 7644 §3.12 — SCIM error responses MUST include 'status' (string)",
+            "recommendation": "Include \"status\": \"<http_code>\" in all SCIM error response JSON bodies",
+        },
+        {
+            "description": "Discovery endpoints respond but are not SCIM-compliant due to response envelope issues (notably Content-Type)",
+            "rfc": "RFC 7644 §4 — discovery endpoints must return SCIM-compliant responses",
+            "recommendation": "Ensure /ServiceProviderConfig, /Schemas, and /ResourceTypes return SCIM responses (starting with Content-Type: application/scim+json)",
+        },
+    ],
 }
 
 
@@ -96,6 +124,14 @@ PROFILE_COMMANDS: Dict[str, str] = {
         "  --compat \\\n"
         "  --i-accept-side-effects"
     ),
+    "fortiauthenticator": (
+        "scim-sanity probe https://<fortiauthenticator-host>/scim/v2 \\\n"
+        "  --token <bearer-token> \\\n"
+        "  --profile fortiauthenticator \\\n"
+        "  --compat \\\n"
+        "  --tls-no-verify \\\n"
+        "  --i-accept-side-effects"
+    ),
 }
 
 
@@ -106,6 +142,24 @@ PROFILE_REFERENCES: Dict[str, List[str]] = {
         "Get bearer token: Azure portal → Enterprise Apps → Provisioning → Entra SCIM endpoint + token",
         "RFC 7643 (SCIM Core Schema): https://www.rfc-editor.org/rfc/rfc7643",
         "RFC 7644 (SCIM Protocol): https://www.rfc-editor.org/rfc/rfc7644",
+    ],
+    "fortiauthenticator": [
+        "FortiAuthenticator SCIM server profile validated against: v8.0.1 build0033 (GA)",
+        "RFC 7643 (SCIM Core Schema): https://www.rfc-editor.org/rfc/rfc7643",
+        "RFC 7644 (SCIM Protocol): https://www.rfc-editor.org/rfc/rfc7644",
+    ],
+}
+
+
+# Human-readable description of request-side payload injections (documentation only).
+# Each entry is a list of bullet strings printed by `scim-sanity profiles <name>`.
+PROFILE_INJECTIONS: Dict[str, List[str]] = {
+    "entra": [
+        "Users: password, mailNickname, enterprise extension schema, Microsoft Entra User extension",
+        "Groups: mailEnabled, mailNickname, securityEnabled, Microsoft Entra Group extension",
+    ],
+    "fortiauthenticator": [
+        "None (no payload injection required; use --compat for response-envelope deviations)",
     ],
 }
 

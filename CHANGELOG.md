@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-04-08
+
+### Added
+- **`fortiauthenticator` profile** — documents 5 known FortiAuthenticator RFC deviations (wrong Content-Type, missing meta timestamps, missing Location on 201, missing `status` in error bodies, non-compliant discovery endpoints). No payload injection required; use with `--compat`. Validated against v8.0.1 build0033 (GA).
+- **`PROFILE_INJECTIONS` registry** — data-driven injection descriptions in `scim-sanity profiles <name>` output, replacing a hardcoded Entra-only block. Scales to all current and future profiles.
+
+### Fixed
+- **`run_probe_api` missing `user_domain` parameter** — the web API entry point was not forwarding `user_domain` to profile field generation, so `--user-domain` had no effect when called via the REST API.
+- **Proxy suppression when `--proxy` is not set** — `requests` was picking up `HTTPS_PROXY`/`HTTP_PROXY` environment variables and macOS system proxies unexpectedly. Now explicitly suppressed unless `--proxy` is passed.
+
+### Changed
+- **`--compat` help text** — now describes what compat mode does and points to `scim-sanity profiles <name>` for per-server detail.
+- **Fix Summary labels in web GUI** — "Trouble:" and "Rationale:" labels added to match CLI output format.
+- Spelling normalization: "prioritised" → "prioritized" across docs.
+
 ## [0.7.0] - 2026-04-05
 
 ### Added

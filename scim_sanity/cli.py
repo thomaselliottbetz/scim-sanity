@@ -21,7 +21,13 @@ import sys
 import json
 from typing import Optional
 
-from .profiles import PROFILES, PROFILE_DEVIATIONS, PROFILE_COMMANDS, PROFILE_REFERENCES
+from .profiles import (
+    PROFILES,
+    PROFILE_DEVIATIONS,
+    PROFILE_COMMANDS,
+    PROFILE_REFERENCES,
+    PROFILE_INJECTIONS,
+)
 
 import click
 
@@ -102,7 +108,7 @@ class _SCIMGroup(click.Group):
               help="SCIM JSON file to validate", hidden=True)
 @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
 @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-@click.version_option(version="0.7.0")
+@click.version_option(version="0.7.1")
 @click.pass_context
 def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
     """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).
@@ -115,8 +121,8 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
       scim-sanity --patch <file>      Validate a SCIM PATCH operation file
       scim-sanity --stdin             Read JSON from stdin
       scim-sanity probe <url>         Probe a SCIM server for conformance
-      scim-sanity profiles            List server profiles (Entra, etc.)
-      scim-sanity profiles entra      Show Entra deviations and recommended command
+      scim-sanity profiles            List server profiles (Entra, FortiAuthenticator, etc.)
+      scim-sanity profiles <name>     Show deviations and recommended command for a profile
     """
     # If a subcommand (e.g. "probe") was invoked, skip default validation
     if ctx.invoked_subcommand is not None:
@@ -165,7 +171,11 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
 @click.option("--skip-cleanup", is_flag=True, help="Leave test resources on the server")
 @click.option("--json-output", is_flag=True, help="Output results as JSON")
 @click.option("--resource", default=None, help="Test a specific resource type (User, Group, Agent, AgenticApplication)")
-@click.option("--strict/--compat", default=True, help="Strict (default) or compat validation mode")
+@click.option(
+    "--strict/--compat",
+    default=True,
+    help="Strict (default) or compat mode (downgrades common real-world RFC deviations to warnings; see 'scim-sanity profiles <name>')",
+)
 @click.option("--i-accept-side-effects", is_flag=True, help="Acknowledge that probe creates/deletes resources on target server")
 @click.option("--timeout", default=30, type=int, help="Per-request timeout in seconds")
 @click.option("--proxy", default=None, help="HTTP/HTTPS proxy URL")
@@ -291,14 +301,15 @@ def profiles(profile_name: Optional[str]):
             click.echo(f"  {line}")
         click.echo()
 
-    # Required fields injected by the profile
-    if profile_name == "entra":
-        click.echo(_colorize("Required payload fields (non-RFC, injected automatically):", "blue"))
-        click.echo("  Users:   password, mailNickname, enterprise extension schema,")
-        click.echo("           urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:User")
-        click.echo("  Groups:  mailEnabled, mailNickname, securityEnabled,")
-        click.echo("           urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group")
-        click.echo()
+    # Payload injections (request-side accommodations)
+    injections = PROFILE_INJECTIONS.get(profile_name, [])
+    click.echo(_colorize("Payload injections:", "blue"))
+    if injections:
+        for item in injections:
+            click.echo(f"  - {item}")
+    else:
+        click.echo("  - None")
+    click.echo()
 
     # Known deviations
     if deviations:

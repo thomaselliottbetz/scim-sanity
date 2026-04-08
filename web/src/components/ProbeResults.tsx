@@ -76,14 +76,14 @@ function FixSummary({ issues }: { issues: ProbeIssue[] }) {
         {issues.map((issue) => (
           <SpaceBetween key={issue.title} size="xxs">
             <Box variant="p">
-              <strong>[{issue.priority}] {issue.title}</strong>
+              <strong>[{issue.priority}] Trouble:</strong> {issue.title}
               {' '}
               <Box variant="span" color="text-status-inactive">
                 ({issue.affected_tests} test{issue.affected_tests !== 1 ? 's' : ''} affected)
               </Box>
             </Box>
             <Box variant="p"><strong>Fix:</strong> {issue.fix}</Box>
-            <Box variant="p" color="text-status-inactive">{issue.rationale}</Box>
+            <Box variant="p"><strong>Rationale:</strong> <Box variant="span" color="text-status-inactive">{issue.rationale}</Box></Box>
           </SpaceBetween>
         ))}
       </SpaceBetween>

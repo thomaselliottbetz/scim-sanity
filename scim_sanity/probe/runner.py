@@ -222,6 +222,7 @@ def run_probe_api(
     profile: Optional[str] = None,
     extra_user_fields: Optional[Dict[str, Any]] = None,
     extra_group_fields: Optional[Dict[str, Any]] = None,
+    user_domain: Optional[str] = None,
 ) -> dict:
     """Run the conformance probe and return a structured dict (for API use).
 
@@ -233,8 +234,8 @@ def run_probe_api(
 
     if profile:
         from ..profiles import get_extra_user_fields, get_extra_group_fields
-        resolved_user = get_extra_user_fields(profile)
-        resolved_group = get_extra_group_fields(profile)
+        resolved_user = get_extra_user_fields(profile, user_domain=user_domain)
+        resolved_group = get_extra_group_fields(profile, user_domain=user_domain)
         resolved_user.update(extra_user_fields or {})
         resolved_group.update(extra_group_fields or {})
         extra_user_fields = resolved_user or None
