@@ -326,8 +326,8 @@ scim-sanity probe <url> --token <token> --ca-bundle /path/to/ca-cert.pem --i-acc
 | `--skip-cleanup` | Leave test resources on the server |
 | `--tls-no-verify` | Skip TLS certificate verification |
 | `--timeout` | Per-request timeout in seconds (default: 30) |
-| `--proxy` | HTTP/HTTPS proxy URL |
-| `--ca-bundle` | Path to custom CA certificate bundle |
+| `--proxy` | HTTP/HTTPS proxy URL. scim-sanity does not inherit `HTTPS_PROXY`/`HTTP_PROXY` env vars — pass this flag explicitly if your target requires a proxy. Most users probing a local or staging server do not need this. |
+| `--ca-bundle` | Path to custom CA certificate bundle. Most users can use `--tls-no-verify` instead during development. For container deployments, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` env vars are also honoured by the underlying HTTP client. |
 | `--profile` | Named server profile (e.g. `entra`) — injects required non-RFC fields |
 | `--extra-user-fields` | Extra JSON fields merged into user creation payloads |
 | `--user-domain` | Domain for generated `userName` values (e.g. `tenant.onmicrosoft.com`) |

@@ -223,6 +223,8 @@ def run_probe_api(
     extra_user_fields: Optional[Dict[str, Any]] = None,
     extra_group_fields: Optional[Dict[str, Any]] = None,
     user_domain: Optional[str] = None,
+    proxy: Optional[str] = None,
+    ca_bundle: Optional[str] = None,
 ) -> dict:
     """Run the conformance probe and return a structured dict (for API use).
 
@@ -248,6 +250,8 @@ def run_probe_api(
         password=password,
         tls_no_verify=tls_no_verify,
         timeout=timeout,
+        proxy=proxy,
+        ca_bundle=ca_bundle,
     )
 
     rv = ServerResponseValidator(strict=strict)

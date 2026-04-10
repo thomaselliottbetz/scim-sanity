@@ -104,6 +104,10 @@ export interface ProbeRequest {
   tls_no_verify: boolean
   skip_cleanup: boolean
   timeout: number
+  profile?: string
+  user_domain?: string
+  proxy?: string
+  ca_bundle?: string
 }
 
 export async function probeServer(req: ProbeRequest): Promise<ProbeResponse> {

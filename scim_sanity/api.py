@@ -50,6 +50,8 @@ class ProbeRequest(BaseModel):
     profile: Optional[str] = None
     extra_user_fields: Optional[Dict[str, Any]] = None
     user_domain: Optional[str] = None
+    proxy: Optional[str] = None
+    ca_bundle: Optional[str] = None
 
 
 _VALIDATE_RESPONSE_EXAMPLE = {
@@ -159,6 +161,8 @@ def probe(req: ProbeRequest):
         profile=req.profile,
         extra_user_fields=req.extra_user_fields,
         user_domain=req.user_domain,
+        proxy=req.proxy,
+        ca_bundle=req.ca_bundle,
     )
 
 

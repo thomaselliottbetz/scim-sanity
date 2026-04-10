@@ -108,7 +108,7 @@ class _SCIMGroup(click.Group):
               help="SCIM JSON file to validate", hidden=True)
 @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
 @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-@click.version_option(version="0.7.1")
+@click.version_option(version="0.7.2")
 @click.pass_context
 def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
     """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).
@@ -178,7 +178,7 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
 )
 @click.option("--i-accept-side-effects", is_flag=True, help="Acknowledge that probe creates/deletes resources on target server")
 @click.option("--timeout", default=30, type=int, help="Per-request timeout in seconds")
-@click.option("--proxy", default=None, help="HTTP/HTTPS proxy URL")
+@click.option("--proxy", default=None, help="HTTP/HTTPS proxy URL. scim-sanity does not inherit HTTPS_PROXY/HTTP_PROXY env vars — pass this flag explicitly if your target requires a proxy.")
 @click.option("--ca-bundle", default=None, type=click.Path(exists=True), help="Path to custom CA certificate bundle")
 @click.option("--profile", default=None, type=click.Choice(list(PROFILES.keys())),
               help="Named server profile (e.g. entra). Injects known server-specific fields into test payloads.")

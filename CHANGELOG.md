@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-04-10
+
+### Added
+- **Web GUI profile selector** — Probe page now exposes a profile dropdown (`entra`, `fortiauthenticator`) and a conditional user domain field (shown when `entra` is selected). Selecting a profile auto-enables compat mode; a hint is shown if compat is manually disabled while a profile is active.
+- **Web GUI Advanced section** — Collapsed by default; exposes proxy URL and CA bundle path fields for environments that require them. Most users do not need these options.
+
+### Fixed
+- **`run_probe_api()` missing `proxy` and `ca_bundle` parameters** — both options were silently dropped when calling the probe via the web API; they are now accepted and forwarded to `SCIMClient()`.
+- **`api.py` and TypeScript client** — `ProbeRequest` updated to accept `proxy` and `ca_bundle` in both the Pydantic model and the TypeScript interface.
+
+### Changed
+- **`--proxy` CLI help text** — now explicitly notes that `HTTPS_PROXY`/`HTTP_PROXY` env vars are not inherited.
+- **README Probe Options** — `--proxy` and `--ca-bundle` entries note that most users don't need them; `--ca-bundle` entry mentions `REQUESTS_CA_BUNDLE`/`SSL_CERT_FILE` env vars for container deployments.
+
+### Tests
+- Added signature regression test for `proxy` and `ca_bundle` parameters in `run_probe_api()`.
+
 ## [0.7.1] - 2026-04-08
 
 ### Added
@@ -13,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **`run_probe_api` missing `user_domain` parameter** — the web API entry point was not forwarding `user_domain` to profile field generation, so `--user-domain` had no effect when called via the REST API.
-- **Proxy suppression when `--proxy` is not set** — `requests` was picking up `HTTPS_PROXY`/`HTTP_PROXY` environment variables and macOS system proxies unexpectedly. Now explicitly suppressed unless `--proxy` is passed.
+- **Proxy suppression when `--proxy` is not set** — `requests` was picking up `HTTPS_PROXY`/`HTTP_PROXY` environment variables and macOS system proxies unexpectedly. Now explicitly suppressed unless `--proxy` is passed. **Note:** if you previously relied on `HTTPS_PROXY`/`HTTP_PROXY` env vars to reach your SCIM target, pass `--proxy` explicitly instead.
 
 ### Changed
 - **`--compat` help text** — now describes what compat mode does and points to `scim-sanity profiles <name>` for per-server detail.

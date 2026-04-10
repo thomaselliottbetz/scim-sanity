@@ -11,6 +11,7 @@ import RadioGroup from '@cloudscape-design/components/radio-group'
 import Select, { type SelectProps } from '@cloudscape-design/components/select'
 import SpaceBetween from '@cloudscape-design/components/space-between'
 import StatusIndicator from '@cloudscape-design/components/status-indicator'
+import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import Toggle from '@cloudscape-design/components/toggle'
 import { probeServer, type ProbeResponse } from '../api/client'
 import ProbeResults from '../components/ProbeResults'
@@ -23,6 +24,12 @@ const RESOURCE_OPTIONS: SelectProps.Option[] = [
   { value: 'AgenticApplication', label: 'AgenticApplication' },
 ]
 
+const PROFILE_OPTIONS: SelectProps.Option[] = [
+  { value: '', label: 'None' },
+  { value: 'entra', label: 'entra — Microsoft Entra ID' },
+  { value: 'fortiauthenticator', label: 'fortiauthenticator — FortiAuthenticator' },
+]
+
 export default function ProbePage() {
   const [url, setUrl] = useState('')
   const [authType, setAuthType] = useState<'bearer' | 'basic'>('bearer')
@@ -30,10 +37,14 @@ export default function ProbePage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [strict, setStrict] = useState(true)
+  const [profile, setProfile] = useState<SelectProps.Option>(PROFILE_OPTIONS[0])
+  const [userDomain, setUserDomain] = useState('')
   const [resource, setResource] = useState<SelectProps.Option>(RESOURCE_OPTIONS[0])
   const [tlsNoVerify, setTlsNoVerify] = useState(false)
   const [skipCleanup, setSkipCleanup] = useState(false)
   const [timeoutSecs, setTimeoutSecs] = useState('30')
+  const [proxy, setProxy] = useState('')
+  const [caBundle, setCaBundle] = useState('')
   const [consent, setConsent] = useState(false)
 
   useEffect(() => {
@@ -83,6 +94,10 @@ export default function ProbePage() {
         tls_no_verify: tlsNoVerify,
         skip_cleanup: skipCleanup,
         timeout: parseInt(timeoutSecs, 10) || 30,
+        profile: profile.value || undefined,
+        user_domain: profile.value === 'entra' && userDomain.trim() ? userDomain.trim() : undefined,
+        proxy: proxy.trim() || undefined,
+        ca_bundle: caBundle.trim() || undefined,
       })
       setResult(data)
     } catch (e) {
@@ -147,7 +162,10 @@ export default function ProbePage() {
             </FormField>
 
             <SpaceBetween size="l" direction="horizontal">
-              <FormField label="Mode">
+              <FormField
+                label="Mode"
+                description={profile.value && strict ? 'Compat mode recommended for this profile' : undefined}
+              >
                 <Toggle
                   checked={!strict}
                   onChange={({ detail }) => setStrict(!detail.checked)}
@@ -173,6 +191,31 @@ export default function ProbePage() {
               </FormField>
             </SpaceBetween>
 
+            <SpaceBetween size="l" direction="horizontal">
+              <FormField label="Server profile" description="Injects required non-RFC fields for known servers">
+                <Select
+                  selectedOption={profile}
+                  onChange={({ detail }) => {
+                    const val = detail.selectedOption.value
+                    setProfile(detail.selectedOption)
+                    if (val !== 'entra') setUserDomain('')
+                    if (val === 'entra' || val === 'fortiauthenticator') setStrict(false)
+                  }}
+                  options={PROFILE_OPTIONS}
+                />
+              </FormField>
+
+              {profile.value === 'entra' && (
+                <FormField label="User domain" description="e.g. tenant.onmicrosoft.com">
+                  <Input
+                    value={userDomain}
+                    onChange={({ detail }) => setUserDomain(detail.value)}
+                    placeholder="tenant.onmicrosoft.com"
+                  />
+                </FormField>
+              )}
+            </SpaceBetween>
+
             <SpaceBetween size="s">
               <Checkbox
                 checked={tlsNoVerify}
@@ -187,6 +230,31 @@ export default function ProbePage() {
                 Skip cleanup (leave test resources on server)
               </Checkbox>
             </SpaceBetween>
+
+            <ExpandableSection headerText="Advanced" defaultExpanded={false}>
+              <SpaceBetween size="l">
+                <FormField
+                  label="Proxy URL"
+                  description="Routes probe traffic through this proxy. Pass explicitly — env vars (HTTPS_PROXY etc.) are not inherited. Credentials in URL are supported: http://user:pass@proxy:8080"
+                >
+                  <Input
+                    value={proxy}
+                    onChange={({ detail }) => setProxy(detail.value)}
+                    placeholder="http://proxy.example.com:8080"
+                  />
+                </FormField>
+                <FormField
+                  label="CA bundle path (server/container path)"
+                  description="Path to a CA bundle file on the machine running scim-sanity. In container deployments, mount the bundle into the container and provide the in-container path. Alternatively, set REQUESTS_CA_BUNDLE or SSL_CERT_FILE env vars on the server — requests honours these automatically without needing this field."
+                >
+                  <Input
+                    value={caBundle}
+                    onChange={({ detail }) => setCaBundle(detail.value)}
+                    placeholder="/path/to/ca-cert.pem"
+                  />
+                </FormField>
+              </SpaceBetween>
+            </ExpandableSection>
 
             <FormField>
               <Checkbox
