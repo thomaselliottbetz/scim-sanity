@@ -31,6 +31,7 @@ from .profiles import (
 
 import click
 
+from . import __version__
 from .validator import validate_file, validate_string, SCIMValidator
 
 
@@ -108,7 +109,7 @@ class _SCIMGroup(click.Group):
               help="SCIM JSON file to validate", hidden=True)
 @click.option("--patch", is_flag=True, help="Validate as PATCH operation")
 @click.option("--stdin", "read_stdin", is_flag=True, help="Read JSON from stdin")
-@click.version_option(version="0.7.2")
+@click.version_option(version=__version__)
 @click.pass_context
 def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
     """Validate SCIM 2.0 payloads & probe server conformance (RFC 7643/7644).

@@ -133,6 +133,9 @@ dmypy.json
 # Project specific
 broken.json2
 PLANNING.md
+PLANNING-*.md
+fortiauthenticator-probe.json
+secrets
 DEVELOPMENT.md
 web/node_modules/
 
@@ -140,4 +143,7 @@ web/node_modules/
 bearertoken.txt
 *.token
 *.secret
+
+# Local procedure notes
+PyPIprocedure.md
 
