@@ -137,6 +137,7 @@ PLANNING-*.md
 fortiauthenticator-probe.json
 secrets
 DEVELOPMENT.md
+ROADMAP-*.md
 web/node_modules/
 
 # Secrets
