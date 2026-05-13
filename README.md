@@ -2,9 +2,9 @@
 
 **SCIM 2.0 conformance testing and payload validation** — from the terminal, a browser, or your own tooling.
 
-[Python 3.9+](https://www.python.org/downloads/)
-[License: MIT](https://opensource.org/licenses/MIT)
-[pre-commit.ci status](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/thomaselliottbetz/scim-sanity/main.svg)](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
 
 scim-sanity tests SCIM 2.0 server conformance. Point the probe at a live server and get a prioritized list of RFC 7643/7644 violations with fix guidance. Lint payloads statically without a live server. Named server profiles (starting with Microsoft Entra ID) handle the non-RFC fields real servers require so the probe can reach the interesting conformance tests rather than stopping at resource creation.
 
