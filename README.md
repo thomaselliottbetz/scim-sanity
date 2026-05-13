@@ -2,19 +2,21 @@
 
 **SCIM 2.0 conformance testing and payload validation** — from the terminal, a browser, or your own tooling.
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/thomaselliottbetz/scim-sanity/main.svg)](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
+[Python 3.9+](https://www.python.org/downloads/)
+[License: MIT](https://opensource.org/licenses/MIT)
+[pre-commit.ci status](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
 
-scim-sanity catches SCIM integration bugs before and after deployment. Run the probe against a live server to get a prioritized list of RFC 7643/7644 violations with fix guidance. Lint payloads before they're sent. Call the REST API to embed conformance testing in your own pipelines or dashboards. Named server profiles (starting with Microsoft Entra ID) handle the non-RFC fields real servers require and tell you exactly why your requests are failing.
+scim-sanity tests SCIM 2.0 server conformance. Point the probe at a live server and get a prioritized list of RFC 7643/7644 violations with fix guidance. Lint payloads statically without a live server. Named server profiles (starting with Microsoft Entra ID) handle the non-RFC fields real servers require so the probe can reach the interesting conformance tests rather than stopping at resource creation.
 
 ## Three ways to use it
 
-| | CLI | Web GUI | REST API |
-|---|---|---|---|
-| **Best for** | CI/CD, scripts, pre-commit hooks | Interactive exploration, demos, onboarding | Custom dashboards, pipelines, embedded tooling |
-| **Requires** | `pip install scim-sanity` | `pip install 'scim-sanity[web]'` | `pip install 'scim-sanity[web]'` |
-| **Start** | `scim-sanity probe <url> ...` | `scim-sanity web` | `scim-sanity web` |
+
+|              | CLI                              | Web GUI                                    | REST API                                       |
+| ------------ | -------------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| **Best for** | Probing servers and linting payloads | Interactive exploration and demos | Embedding validation in your own tooling |
+| **Requires** | `pip install scim-sanity`        | `pip install 'scim-sanity[web]'`           | `pip install 'scim-sanity[web]'`               |
+| **Start**    | `scim-sanity probe <url> ...`    | `scim-sanity web`                          | `scim-sanity web`                              |
+
 
 Quick reference for targeting a known server:
 
@@ -59,7 +61,7 @@ scim-sanity includes an optional browser-based interface built with React and th
 scim-sanity web
 ```
 
-Open **http://127.0.0.1:8000** in your browser. Options:
+Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser. Options:
 
 ```bash
 scim-sanity web --port 8080 --host 0.0.0.0
@@ -67,11 +69,13 @@ scim-sanity web --port 8080 --host 0.0.0.0
 
 ### Pages
 
-| Page | Path | Description |
-|------|------|-------------|
-| **Validate** | `/validate` | Paste or load a SCIM JSON payload and validate it against RFC 7643/7644 rules. Supports full resources and PATCH operations. Load any example from the built-in library. |
-| **Probe** | `/probe` | Configure and run a live server conformance probe. Results are grouped by test phase with status indicators and a prioritized Fix Summary when failures are present. |
+
+| Page         | Path        | Description                                                                                                                                                                    |
+| ------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Validate** | `/validate` | Paste or load a SCIM JSON payload and validate it against RFC 7643/7644 rules. Supports full resources and PATCH operations. Load any example from the built-in library.       |
+| **Probe**    | `/probe`    | Configure and run a live server conformance probe. Results are grouped by test phase with status indicators and a prioritized Fix Summary when failures are present.           |
 | **Examples** | `/examples` | Browse 16 curated RFC example payloads. Filter by resource type (User, Group, Agent, AgenticApplication, PATCH) or validity. Load any example directly into the Validate page. |
+
 
 ---
 
@@ -83,15 +87,15 @@ When `scim-sanity web` is running, the same engine that powers the CLI and GUI i
 
 Three documentation interfaces are served automatically:
 
-- **http://127.0.0.1:8000/docs** — Swagger UI. Lists all endpoints, shows request and response schemas, and lets you execute live calls directly from the browser. Paste a payload into `/api/validate` and run it, or fire a probe at a real server, without writing any code. The fastest way to understand what the API does and verify it works against your environment.
-- **http://127.0.0.1:8000/redoc** — ReDoc. A clean, single-page reference layout presenting the same schema information in a format better suited to reading than experimenting. Useful when you want to understand the full response structure before integrating.
-- **http://127.0.0.1:8000/openapi.json** — The raw OpenAPI 3.1 specification. Download this to import the API into Postman or Insomnia, generate a typed client in any language, or integrate scim-sanity into API gateways and toolchains that consume OpenAPI specs. The schema is stable within major versions.
+- **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)** — Swagger UI. Lists all endpoints, shows request and response schemas, and lets you execute live calls directly from the browser. Paste a payload into `/api/validate` and run it, or fire a probe at a real server, without writing any code. The fastest way to understand what the API does and verify it works against your environment.
+- **[http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)** — ReDoc. A clean, single-page reference layout presenting the same schema information in a format better suited to reading than experimenting. Useful when you want to understand the full response structure before integrating.
+- **[http://127.0.0.1:8000/openapi.json](http://127.0.0.1:8000/openapi.json)** — The raw OpenAPI 3.1 specification. Download this to import the API into Postman or Insomnia, generate a typed client in any language, or integrate scim-sanity into API gateways and toolchains that consume OpenAPI specs. The schema is stable within major versions.
 
-![Swagger UI — three endpoints, no internal routes exposed](images/swagger-overview.png)
+Swagger UI — three endpoints, no internal routes exposed
 
 *Swagger UI (`/docs`) — all three endpoints with schemas and a live "Try it out" button.*
 
-![ReDoc — Probe endpoint with full schema and response sample](images/redoc-probe.png)
+ReDoc — Probe endpoint with full schema and response sample
 
 *ReDoc (`/redoc`) — typed schema fields, defaults, and a real probe response sample side by side.*
 
@@ -208,30 +212,24 @@ curl -X POST http://127.0.0.1:8000/api/probe \
 
 Full probe request parameters:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `url` | string | SCIM base URL (required) |
-| `token` | string | Bearer token for authentication |
-| `username` / `password` | string | Basic auth credentials |
-| `mode` | `"strict"` \| `"compat"` | Validation mode (default: `"strict"`) |
-| `resource` | string | Limit to one resource type: `User`, `Group`, `Agent`, `AgenticApplication` |
-| `i_accept_side_effects` | boolean | **Required `true`.** Acknowledges that the probe creates and deletes real resources. |
-| `tls_no_verify` | boolean | Skip TLS certificate verification |
-| `skip_cleanup` | boolean | Leave test resources on the server after the run |
-| `timeout` | integer | Per-request timeout in seconds (default: 30) |
-| `proxy` | string | HTTP/HTTPS proxy URL |
-| `ca_bundle` | string | Path to custom CA certificate bundle |
-| `profile` | string | Named server profile (e.g. `"entra"`) — injects required non-RFC payload fields |
-| `extra_user_fields` | object | Extra fields merged into user creation payloads |
-| `user_domain` | string | Domain for generated `userName` values (e.g. `"tenant.onmicrosoft.com"`) |
 
-### What to build with it
+| Parameter               | Type       | Description                                                                          |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------ |
+| `url`                   | string     | SCIM base URL (required)                                                             |
+| `token`                 | string     | Bearer token for authentication                                                      |
+| `username` / `password` | string     | Basic auth credentials                                                               |
+| `mode`                  | `"strict"` | `"compat"`                                                                           |
+| `resource`              | string     | Limit to one resource type: `User`, `Group`, `Agent`, `AgenticApplication`           |
+| `i_accept_side_effects` | boolean    | **Required `true`.** Acknowledges that the probe creates and deletes real resources. |
+| `tls_no_verify`         | boolean    | Skip TLS certificate verification                                                    |
+| `skip_cleanup`          | boolean    | Leave test resources on the server after the run                                     |
+| `timeout`               | integer    | Per-request timeout in seconds (default: 30)                                         |
+| `proxy`                 | string     | HTTP/HTTPS proxy URL                                                                 |
+| `ca_bundle`             | string     | Path to custom CA certificate bundle                                                 |
+| `profile`               | string     | Named server profile (e.g. `"entra"`) — injects required non-RFC payload fields      |
+| `extra_user_fields`     | object     | Extra fields merged into user creation payloads                                      |
+| `user_domain`           | string     | Domain for generated `userName` values (e.g. `"tenant.onmicrosoft.com"`)             |
 
-- **Deployment gates** — Call `/api/probe` from a staging pipeline. Block promotion if the conformance score regresses.
-- **Monitoring** — Schedule periodic probe runs against a production SCIM endpoint and alert on new failures.
-- **Internal validation services** — Expose SCIM linting to other teams without requiring them to install Python or learn the CLI.
-- **Test fixtures** — Call `/api/validate` from integration tests to assert that payloads your application generates are spec-compliant before sending them.
-- **Dashboards** — Aggregate probe results across multiple SCIM endpoints and display conformance trends over time.
 
 ### Stability
 
@@ -259,12 +257,16 @@ scim-sanity profiles entra
 
 Available profiles:
 
-| Profile | Server | What it injects |
-|---------|--------|-----------------|
-| `entra` | Microsoft Entra ID SCIM server | `password`, `mailNickname`, enterprise + Microsoft Entra extension schemas for Users; `mailEnabled`, `mailNickname`, `securityEnabled`, Entra Group extension for Groups |
-| `fortiauthenticator` | FortiAuthenticator SCIM server | None — use `--compat` for response-envelope deviations (e.g. Content-Type, missing meta timestamps) |
+
+| Profile              | Server                         | What it injects                                                                                                                                                          |
+| -------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `entra`              | Microsoft Entra ID SCIM server | `password`, `mailNickname`, enterprise + Microsoft Entra extension schemas for Users; `mailEnabled`, `mailNickname`, `securityEnabled`, Entra Group extension for Groups |
+| `fortiauthenticator` | FortiAuthenticator SCIM server | None — use `--compat` for response-envelope deviations (e.g. Content-Type, missing meta timestamps)                                                                      |
+
 
 Use `--profile` with `--compat` for the most useful output against known non-conformant servers — profiles handle the request side, compat mode handles the response side:
+
+Note: FortiAuthenticator deployments may use basic auth; use `--username/--password` instead of `--token` when applicable.
 
 ```bash
 # Microsoft Entra ID
@@ -315,22 +317,24 @@ scim-sanity probe <url> --token <token> --ca-bundle /path/to/ca-cert.pem --i-acc
 
 ### Probe Options
 
-| Option | Description |
-|--------|-------------|
-| `--token` | Bearer token for authentication |
-| `--username` / `--password` | Basic auth credentials |
-| `--i-accept-side-effects` | **Required.** Acknowledge that the probe creates/deletes resources |
-| `--strict` / `--compat` | Strict (default) or compat validation mode |
-| `--json-output` | Output results as JSON |
-| `--resource` | Test a specific resource type (User, Group, Agent, AgenticApplication) |
-| `--skip-cleanup` | Leave test resources on the server |
-| `--tls-no-verify` | Skip TLS certificate verification |
-| `--timeout` | Per-request timeout in seconds (default: 30) |
-| `--proxy` | HTTP/HTTPS proxy URL. scim-sanity does not inherit `HTTPS_PROXY`/`HTTP_PROXY` env vars — pass this flag explicitly if your target requires a proxy. Most users probing a local or staging server do not need this. |
-| `--ca-bundle` | Path to custom CA certificate bundle. Most users can use `--tls-no-verify` instead during development. For container deployments, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` env vars are also honoured by the underlying HTTP client. |
-| `--profile` | Named server profile (e.g. `entra`) — injects required non-RFC fields |
-| `--extra-user-fields` | Extra JSON fields merged into user creation payloads |
-| `--user-domain` | Domain for generated `userName` values (e.g. `tenant.onmicrosoft.com`) |
+
+| Option                      | Description                                                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--token`                   | Bearer token for authentication                                                                                                                                                                                                      |
+| `--username` / `--password` | Basic auth credentials                                                                                                                                                                                                               |
+| `--i-accept-side-effects`   | **Required.** Acknowledge that the probe creates/deletes resources                                                                                                                                                                   |
+| `--strict` / `--compat`     | Strict (default) or compat validation mode                                                                                                                                                                                           |
+| `--json-output`             | Output results as JSON                                                                                                                                                                                                               |
+| `--resource`                | Test a specific resource type (User, Group, Agent, AgenticApplication)                                                                                                                                                               |
+| `--skip-cleanup`            | Leave test resources on the server                                                                                                                                                                                                   |
+| `--tls-no-verify`           | Skip TLS certificate verification                                                                                                                                                                                                    |
+| `--timeout`                 | Per-request timeout in seconds (default: 30)                                                                                                                                                                                         |
+| `--proxy`                   | HTTP/HTTPS proxy URL. scim-sanity does not inherit `HTTPS_PROXY`/`HTTP_PROXY` env vars — pass this flag explicitly if your target requires a proxy. Most users probing a local or staging server do not need this.                   |
+| `--ca-bundle`               | Path to custom CA certificate bundle. Most users can use `--tls-no-verify` instead during development. For container deployments, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` env vars are also honoured by the underlying HTTP client. |
+| `--profile`                 | Named server profile (e.g. `entra`) — injects required non-RFC fields                                                                                                                                                                |
+| `--extra-user-fields`       | Extra JSON fields merged into user creation payloads                                                                                                                                                                                 |
+| `--user-domain`             | Domain for generated `userName` values (e.g. `tenant.onmicrosoft.com`)                                                                                                                                                               |
+
 
 ### Safety Guardrails
 
@@ -351,46 +355,42 @@ The probe implements several safety measures to prevent accidental damage:
 The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP traffic — no mocking.
 
 1. **Discovery** (RFC 7644 §4)
-   - GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`
-   - Asserts: HTTP 200, `Content-Type: application/scim+json`, parseable JSON body
-   - A server that omits these endpoints forces clients to hardcode assumptions about server capabilities
-
+  - GET `/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes`
+  - Asserts: HTTP 200, `Content-Type: application/scim+json`, parseable JSON body
+  - A server that omits these endpoints forces clients to hardcode assumptions about server capabilities
 2. **User CRUD Lifecycle** (RFC 7644 §3.3, §3.4.1, §3.5.1, §3.6; RFC 7643 §4.1)
-   - POST → asserts 201, `Content-Type: application/scim+json`, `Location` header, `id`, `meta.created`, `meta.lastModified`
-   - GET by id → asserts 200, same Content-Type and meta fields
-   - PUT → asserts 200, same Content-Type and meta fields
-   - GET after PUT → asserts the updated field value persisted
-   - PATCH `active=false` → asserts 200 or 204
-   - GET after PATCH → asserts `active` is `false`
-   - DELETE → asserts 204 No Content (RFC 7644 §3.6)
-   - GET after DELETE → asserts 404
-
+  - POST → asserts 201, `Content-Type: application/scim+json`, `Location` header, `id`, `meta.created`, `meta.lastModified`
+  - GET by id → asserts 200, same Content-Type and meta fields
+  - PUT → asserts 200, same Content-Type and meta fields
+  - GET after PUT → asserts the updated field value persisted
+  - PATCH `active=false` → asserts 200 or 204
+  - GET after PATCH → asserts `active` is `false`
+  - DELETE → asserts 204 No Content (RFC 7644 §3.6)
+  - GET after DELETE → asserts 404
 3. **Group CRUD Lifecycle** (RFC 7644 §3.3; RFC 7643 §4.2)
-   - Same sequence as User
-   - Additional PATCH: add a member, then remove all members — asserts 200 each
-
+  - Same sequence as User
+  - Additional PATCH: add a member, then remove all members — asserts 200 each
 4. **Agent CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
-   - Same sequence as User
-   - Skipped if server does not advertise Agent support in `/ResourceTypes`
-
+  - Same sequence as User
+  - Skipped if server does not advertise Agent support in `/ResourceTypes`
 5. **AgenticApplication CRUD Lifecycle** (draft-abbey-scim-agent-extension-00)
-   - Same sequence as User
-   - Skipped if server does not advertise AgenticApplication support
+  - Same sequence as User
+  - Skipped if server does not advertise AgenticApplication support
 
 5a. **Agent Rapid Lifecycle** (draft-abbey-scim-agent-extension-00)
-   - Create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
-   - Skipped if server does not support Agents
 
-6. **Search** (RFC 7644 §3.4.2, §8.1)
-   - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
-   - GET `/Users?filter=...` → asserts 200 (or 400 if partial filter support)
-   - GET `/Users?startIndex=1&count=1` → asserts pagination parameters honored
-   - GET `/Users?count=0` → asserts `totalResults` present with empty `Resources`
+- Create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
+- Skipped if server does not support Agents
 
-7. **Error Handling** (RFC 7644 §3.12)
-   - GET nonexistent resource → asserts 404 with SCIM error schema (`schemas`, `status`)
-   - POST invalid JSON body → asserts 400 with SCIM error schema
-   - POST missing required field (`userName`) → asserts 400 with SCIM error schema
+1. **Search** (RFC 7644 §3.4.2, §8.1)
+  - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
+  - GET `/Users?filter=...` → asserts 200 (or 400 if partial filter support)
+  - GET `/Users?startIndex=1&count=1` → asserts pagination parameters honored
+  - GET `/Users?count=0` → asserts `totalResults` present with empty `Resources`
+2. **Error Handling** (RFC 7644 §3.12)
+  - GET nonexistent resource → asserts 404 with SCIM error schema (`schemas`, `status`)
+  - POST invalid JSON body → asserts 400 with SCIM error schema
+  - POST missing required field (`userName`) → asserts 400 with SCIM error schema
 
 ### Strict vs Compat Mode
 
@@ -401,6 +401,7 @@ The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP
 > **Compat mode and profiles are complementary, not alternatives.** Compat mode governs how scim-sanity interprets *responses* — it tolerates known deviations in what the server sends back. Profiles govern what scim-sanity *sends* — they inject non-RFC fields required to successfully create resources on servers with non-standard requirements. For known non-conformant servers like Entra, use both together: `--profile entra --compat`.
 
 Current compat warnings include:
+
 - `application/json` instead of `application/scim+json`
 - DELETE 204 with response body
 - Location header mismatch with `meta.location`
@@ -410,6 +411,7 @@ Current compat warnings include:
 Warnings appear in output but don't cause a non-zero exit code.
 
 **Always failures (not compat-eligible):** Some deviations are reported as `FAIL` in both strict and compat mode because they fundamentally break RFC-compliant clients:
+
 - Server rejects `Content-Type: application/scim+json` requests (e.g., with 500) but accepts `application/json` — diagnosed automatically and cited against RFC 7644 §8.2.
 
 **Error response reporting:** When a server returns a 4xx or 5xx status for a resource endpoint, only the unexpected status code is reported. Predictable side-effects (missing `id`, `meta`, `schemas` in the error body) are suppressed to avoid obscuring the root cause with cascade noise.
@@ -499,12 +501,14 @@ scim-sanity payload.json || exit 1
 ### Validation Rules
 
 **Required attributes:**
+
 - User: `userName`
 - Group: `displayName`
 - Agent: `name`
 - AgenticApplication: `name`
 
 **What it checks:**
+
 - Schema URN validity and presence
 - Required attributes per resource type
 - Immutable attributes (`id`, `meta`) not set by client
@@ -540,6 +544,7 @@ Found 3 error(s):
 ### Minimal valid examples
 
 **User**
+
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -548,6 +553,7 @@ Found 3 error(s):
 ```
 
 **Group**
+
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
@@ -556,6 +562,7 @@ Found 3 error(s):
 ```
 
 **Agent**
+
 ```json
 {
   "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Agent"],
@@ -564,6 +571,7 @@ Found 3 error(s):
 ```
 
 **PATCH operation**
+
 ```json
 {
   "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
@@ -574,45 +582,6 @@ Found 3 error(s):
 ---
 
 ## Integrations
-
-### Pre-commit Hook
-
-Validate SCIM payload files automatically on every commit. Add to `.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: local
-    hooks:
-      - id: scim-sanity
-        name: Validate SCIM resources
-        entry: python -m scim_sanity
-        language: system
-        types: [json]
-        exclude: |
-          (?x)^(
-            .*/node_modules/.*|
-            .*/\.venv/.*|
-            .*/venv/.*|
-            .*package\.json$|
-            .*package-lock\.json$|
-            .*tsconfig.*\.json$|
-            .*jsconfig\.json$
-          )$
-        pass_filenames: true
-        stages: [commit]
-```
-
-### Ansible
-
-Action plugin for SCIM validation in Ansible playbooks. See [ansible/README.md](ansible/README.md).
-
-```yaml
-- name: Validate SCIM payload
-  scim_validate:
-    payload: "{{ user_payload }}"
-    operation: full
-  register: validation_result
-```
 
 ---
 
@@ -695,3 +664,4 @@ MIT License - see [LICENSE](LICENSE) file.
 - [RFC 7643 - SCIM: Core Schema](https://tools.ietf.org/html/rfc7643)
 - [RFC 7644 - SCIM: Protocol](https://tools.ietf.org/html/rfc7644)
 - [draft-abbey-scim-agent-extension-00](https://datatracker.ietf.org/doc/draft-abbey-scim-agent-extension/)
+
