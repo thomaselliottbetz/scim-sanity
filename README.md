@@ -653,8 +653,8 @@ The built static files are served automatically by `scim-sanity web` — no sepa
 
 ## Further Reading
 
-- Seattle Code Studio: "scim-sanity: Verifying SCIM Protocol Conformance" (Feb 24, 2026)
-  https://www.seattlecodestudio.com/#post/scim-sanity-verifying-scim-protocol-conformance
+Seattle Code Studio: "scim-sanity: Verifying SCIM Protocol Conformance" (Feb 24, 2026)
+https://www.seattlecodestudio.com/#post/scim-sanity-verifying-scim-protocol-conformance
 
 ## Contributing
 
