@@ -34,6 +34,8 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "jsonschema>=4.0.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
 ]
 web = [
     "fastapi",

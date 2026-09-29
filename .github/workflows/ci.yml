@@ -30,3 +30,27 @@ jobs:
       run: |
         pytest -v
 
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run bandit (static analysis)
+      run: |
+        bandit -r scim_sanity -ll
+
+    - name: Run pip-audit (dependency vulnerability scan)
+      run: |
+        pip-audit
+
