@@ -134,6 +134,16 @@ def test_custom_timeout():
         assert resp.status_code == 200
 
 
+@pytest.mark.parametrize("bad_url", [
+    "file:///etc/passwd",
+    "ftp://example.com/scim/v2",
+    "javascript:alert(1)",
+])
+def test_rejects_non_http_scheme(bad_url):
+    with pytest.raises(ValueError):
+        SCIMClient(bad_url)
+
+
 def test_redact_auth():
     headers = {
         "Authorization": "Bearer secret-token-123",

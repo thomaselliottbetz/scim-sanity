@@ -16,6 +16,9 @@ import json
 import ssl
 import time
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlparse
+
+_ALLOWED_SCHEMES = ("http", "https")
 
 # Optional dependency: use requests if available, fall back to urllib
 try:
@@ -89,6 +92,13 @@ class SCIMClient:
         proxy: Optional[str] = None,
         ca_bundle: Optional[str] = None,
     ):
+        scheme = urlparse(base_url).scheme.lower()
+        if scheme not in _ALLOWED_SCHEMES:
+            raise ValueError(
+                f"base_url must use one of {_ALLOWED_SCHEMES!r}, got scheme "
+                f"{scheme!r} in {base_url!r}"
+            )
+
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.username = username
@@ -244,7 +254,9 @@ class SCIMClient:
             if opener:
                 resp = opener.open(req, timeout=self.timeout)
             else:
-                resp = urllib.request.urlopen(req, context=ctx, timeout=self.timeout)
+                # scheme is restricted to http/https in __init__, so this cannot
+                # open a file:// or other unexpected-scheme URL
+                resp = urllib.request.urlopen(req, context=ctx, timeout=self.timeout)  # nosec B310
             with resp:
                 resp_body = resp.read().decode("utf-8", errors="replace")
                 resp_headers = {k: v for k, v in resp.getheaders()}
