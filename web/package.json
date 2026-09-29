@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cloudscape-design/components": "^3.0.0",
+    "@cloudscape-design/components": "^3.0.1387",
     "@cloudscape-design/global-styles": "^1.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
