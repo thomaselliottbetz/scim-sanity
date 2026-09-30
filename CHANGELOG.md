@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-09-29
+
+### Security
+- **`SCIMClient` now rejects non-http/https `base_url` schemes** — `urllib.request.urlopen()` would previously follow `file://` or other unexpected schemes if an unvalidated URL reached it (flagged by a new bandit scan, B310). The scheme is now validated once in `SCIMClient.__init__`, covering both the `requests` and `urllib` code paths. **Compatibility note:** constructing a client with a non-http/https `base_url` now raises `ValueError` immediately, rather than failing later (or succeeding unexpectedly) at request time.
+
+### Added
+- **CI: `security` job** — runs `bandit` (static analysis) and `pip-audit` (dependency vulnerability scanning) on every push/PR, alongside the existing test job.
+- **Dependabot** — enabled for `pip` (root), `npm` (`web/`), and GitHub Actions, weekly.
+
+### Tests
+- Added regression tests covering `SCIMClient` scheme rejection (`file://`, `ftp://`, `javascript:`).
+
 ## [0.7.2] - 2026-04-10
 
 ### Added

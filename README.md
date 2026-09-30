@@ -2,6 +2,7 @@
 
 **SCIM 2.0 conformance testing and payload validation** — from the terminal, a browser, or your own tooling.
 
+[![CI](https://github.com/thomaselliottbetz/scim-sanity/actions/workflows/ci.yml/badge.svg)](https://github.com/thomaselliottbetz/scim-sanity/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/thomaselliottbetz/scim-sanity/main.svg)](https://results.pre-commit.ci/latest/github/thomaselliottbetz/scim-sanity/main)
