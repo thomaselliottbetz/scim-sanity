@@ -10,5 +10,4 @@ Integration guides for using scim-sanity with identity providers. Each guide cov
 ## See Also
 
 - [Main scim-sanity Documentation](../../README.md)
-- [Ansible Integration](../../ansible/README.md)
 - [Security and Compliance Documentation](../security/compliance.md)

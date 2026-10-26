@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Web GUI was missing from published wheels** — `pip install 'scim-sanity[web]'` has never included the frontend (0.6.0-0.7.3), so `scim-sanity web` served only the API and returned a "Frontend not built" error for every page. The frontend now builds into `scim_sanity/static/` and is included as package data. When the build is absent (e.g. a source checkout), the server now returns HTTP 503 instead of 200 with an error body.
 - **`__version__` reported 0.7.2** in the 0.7.3 release (CLI `--version`, API, probe JSON).
+- **Docs**: fixed the payload-validation CI example in `docs/security/compliance.md` (recursive glob did not expand), the Entra `externalId` description (defaults to `mailNickname` for users), and dead Google Workspace links.
 - **README**: probe request documents `strict` (there is no `mode` field); `GET /api/examples` sample shows the real `{"examples": [...]}` shape; restored screenshots; fixed list numbering.
 
 ### Security
@@ -18,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `fortiauthenticator` profile output includes a basic-auth (`--username`/`--password`) example.
+
+### Removed
+- Ansible action plugin (`ansible/`): untested and not packaged.
 
 ## [0.7.3] - 2026-09-29
 
