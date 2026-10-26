@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# web/dist/ sits two levels up from this file (scim_sanity/ → project root → web/dist/)
-_WEB_DIST = Path(__file__).parent.parent / "web" / "dist"
+# The built frontend lives inside the package (scim_sanity/static/) so it ships in the wheel.
+_WEB_DIST = Path(__file__).parent / "static"
 
 from . import __version__
 from .validator import SCIMValidator
@@ -26,7 +26,7 @@ from .probe.runner import run_probe_api
 
 app = FastAPI(title="scim-sanity API", version=__version__)
 
-# Serve pre-built JS/CSS bundles from web/dist/assets/ at /assets.
+# Serve pre-built JS/CSS bundles from scim_sanity/static/assets/ at /assets.
 # Only mounted when the frontend has been built; safe to skip in CLI-only installs.
 if (_WEB_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=_WEB_DIST / "assets"), name="assets")
@@ -228,4 +228,7 @@ def serve_frontend(full_path: str):
     index = _WEB_DIST / "index.html"
     if index.exists():
         return FileResponse(index)
-    return {"error": "Frontend not built. Run: cd web && npm run build"}
+    return JSONResponse(
+        status_code=503,
+        content={"error": "Frontend not built. Run: cd web && npm run build"},
+    )

@@ -635,7 +635,7 @@ To build the frontend for production:
 
 ```bash
 cd web
-npm run build        # outputs to web/dist/
+npm run build        # outputs to scim_sanity/static/
 ```
 
 The built static files are served automatically by `scim-sanity web` — no separate frontend process needed.

@@ -54,6 +54,10 @@ Issues = "https://github.com/thomaselliottbetz/scim-sanity/issues"
 [tool.setuptools]
 packages = ["scim_sanity", "scim_sanity.probe"]
 
+# Built web GUI (npm run build in web/ writes here); must exist before building the wheel.
+[tool.setuptools.package-data]
+scim_sanity = ["static/*", "static/assets/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
