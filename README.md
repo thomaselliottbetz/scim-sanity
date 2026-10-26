@@ -68,6 +68,8 @@ Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser. Options
 scim-sanity web --port 8080 --host 0.0.0.0
 ```
 
+> **Caution: do not bind to a non-loopback address on an untrusted network.** The web server has no authentication. Anyone who can reach it can use `/api/probe` to make your machine send requests, with credentials they supply, to any host your machine can reach (including internal addresses), and to create and delete resources there. The default `127.0.0.1` keeps the server reachable only from your own machine. If you need remote access, put it behind an authenticated reverse proxy or an SSH tunnel.
+
 ### Pages
 
 
@@ -92,11 +94,11 @@ Three documentation interfaces are served automatically:
 - **[http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)** — ReDoc. A clean, single-page reference layout presenting the same schema information in a format better suited to reading than experimenting. Useful when you want to understand the full response structure before integrating.
 - **[http://127.0.0.1:8000/openapi.json](http://127.0.0.1:8000/openapi.json)** — The raw OpenAPI 3.1 specification. Download this to import the API into Postman or Insomnia, generate a typed client in any language, or integrate scim-sanity into API gateways and toolchains that consume OpenAPI specs. The schema is stable within major versions.
 
-Swagger UI — three endpoints, no internal routes exposed
+![Swagger UI — three endpoints, no internal routes exposed](images/swagger-overview.png)
 
 *Swagger UI (`/docs`) — all three endpoints with schemas and a live "Try it out" button.*
 
-ReDoc — Probe endpoint with full schema and response sample
+![ReDoc — Probe endpoint with full schema and response sample](images/redoc-probe.png)
 
 *ReDoc (`/redoc`) — typed schema fields, defaults, and a real probe response sample side by side.*
 
@@ -111,19 +113,21 @@ curl http://127.0.0.1:8000/api/examples
 ```
 
 ```json
-[
-  {
-    "id": "valid-user-minimal",
-    "name": "Minimal valid User",
-    "description": "Smallest valid User payload — only the required userName attribute.",
-    "resource_type": "User",
-    "valid": true,
-    "payload": {
-      "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-      "userName": "john.doe@example.com"
+{
+  "examples": [
+    {
+      "id": "valid-user-minimal",
+      "name": "Minimal valid User",
+      "description": "Smallest valid User payload — only the required userName attribute.",
+      "resource_type": "User",
+      "valid": true,
+      "payload": {
+        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        "userName": "john.doe@example.com"
+      }
     }
-  }
-]
+  ]
+}
 ```
 
 #### `POST /api/validate`
@@ -173,14 +177,14 @@ curl -X POST http://127.0.0.1:8000/api/probe \
   -d '{
     "url": "https://example.com/scim/v2",
     "token": "your-bearer-token",
-    "mode": "strict",
+    "strict": true,
     "i_accept_side_effects": true
   }'
 ```
 
 ```json
 {
-  "scim_sanity_version": "0.7.0",
+  "scim_sanity_version": "0.7.3",
   "mode": "strict",
   "timestamp": "2026-02-24 09:15:00",
   "summary": {
@@ -219,7 +223,7 @@ Full probe request parameters:
 | `url`                   | string     | SCIM base URL (required)                                                             |
 | `token`                 | string     | Bearer token for authentication                                                      |
 | `username` / `password` | string     | Basic auth credentials                                                               |
-| `mode`                  | `"strict"` | `"compat"`                                                                           |
+| `strict`                | boolean    | `true` (default) for strict mode, `false` for compat mode                            |
 | `resource`              | string     | Limit to one resource type: `User`, `Group`, `Agent`, `AgenticApplication`           |
 | `i_accept_side_effects` | boolean    | **Required `true`.** Acknowledges that the probe creates and deletes real resources. |
 | `tls_no_verify`         | boolean    | Skip TLS certificate verification                                                    |
@@ -227,7 +231,7 @@ Full probe request parameters:
 | `timeout`               | integer    | Per-request timeout in seconds (default: 30)                                         |
 | `proxy`                 | string     | HTTP/HTTPS proxy URL                                                                 |
 | `ca_bundle`             | string     | Path to custom CA certificate bundle                                                 |
-| `profile`               | string     | Named server profile (e.g. `"entra"`) — injects required non-RFC payload fields      |
+| `profile`               | string     | Named server profile (e.g. `"entra"`) — may inject required fields and/or document known deviations |
 | `extra_user_fields`     | object     | Extra fields merged into user creation payloads                                      |
 | `user_domain`           | string     | Domain for generated `userName` values (e.g. `"tenant.onmicrosoft.com"`)             |
 
@@ -265,9 +269,7 @@ Available profiles:
 | `fortiauthenticator` | FortiAuthenticator SCIM server | None — use `--compat` for response-envelope deviations (e.g. Content-Type, missing meta timestamps)                                                                      |
 
 
-Use `--profile` with `--compat` for the most useful output against known non-conformant servers — profiles handle the request side, compat mode handles the response side:
-
-Note: FortiAuthenticator deployments may use basic auth; use `--username/--password` instead of `--token` when applicable.
+Use `--profile` with `--compat` for the most useful output against known non-conformant servers — profiles handle the request side, compat mode handles the response side.
 
 ```bash
 # Microsoft Entra ID
@@ -276,6 +278,18 @@ scim-sanity probe https://graph.microsoft.com/rp/scim \
   --profile entra \
   --user-domain <tenant>.onmicrosoft.com \
   --compat \
+  --i-accept-side-effects
+```
+
+FortiAuthenticator deployments may use basic auth; use `--username`/`--password` instead of `--token` when applicable:
+
+```bash
+# FortiAuthenticator
+scim-sanity probe https://<fortiauthenticator-host>/scim/v2 \
+  --token <bearer-token> \
+  --profile fortiauthenticator \
+  --compat \
+  --tls-no-verify \
   --i-accept-side-effects
 ```
 
@@ -332,7 +346,7 @@ scim-sanity probe <url> --token <token> --ca-bundle /path/to/ca-cert.pem --i-acc
 | `--timeout`                 | Per-request timeout in seconds (default: 30)                                                                                                                                                                                         |
 | `--proxy`                   | HTTP/HTTPS proxy URL. scim-sanity does not inherit `HTTPS_PROXY`/`HTTP_PROXY` env vars — pass this flag explicitly if your target requires a proxy. Most users probing a local or staging server do not need this.                   |
 | `--ca-bundle`               | Path to custom CA certificate bundle. Most users can use `--tls-no-verify` instead during development. For container deployments, `REQUESTS_CA_BUNDLE` and `SSL_CERT_FILE` env vars are also honoured by the underlying HTTP client. |
-| `--profile`                 | Named server profile (e.g. `entra`) — injects required non-RFC fields                                                                                                                                                                |
+| `--profile`                 | Named server profile (e.g. `entra`) — may inject required fields and/or document known deviations; see `scim-sanity profiles <name>` |
 | `--extra-user-fields`       | Extra JSON fields merged into user creation payloads                                                                                                                                                                                 |
 | `--user-domain`             | Domain for generated `userName` values (e.g. `tenant.onmicrosoft.com`)                                                                                                                                                               |
 
@@ -349,7 +363,7 @@ The probe implements several safety measures to prevent accidental damage:
 - **Timeouts** — Per-request timeouts prevent hung runs.
 - **Cleanup** — Deletes all created test resources in reverse order (groups before users). Skippable with `--skip-cleanup`.
 - **Failure semantics** — If the process is interrupted, partial cleanup may occur; orphaned test resources are possible and should be removed manually.
-- **Secret redaction** — Authorization headers are redacted in any JSON output or logs.
+- **No credential output** — Request credentials (bearer tokens, basic-auth passwords) are never included in JSON output or logs.
 
 ### Test Sequence
 
@@ -378,17 +392,15 @@ The probe runs 7 phases. Each phase tests specific RFC clauses against real HTTP
   - Same sequence as User
   - Skipped if server does not advertise AgenticApplication support
 
-5a. **Agent Rapid Lifecycle** (draft-abbey-scim-agent-extension-00)
-
-- Create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
-- Skipped if server does not support Agents
-
-1. **Search** (RFC 7644 §3.4.2, §8.1)
+   **5a. Agent Rapid Lifecycle** (draft-abbey-scim-agent-extension-00)
+  - Create and immediately delete multiple agents (default 10) to test ephemeral provisioning at machine speed
+  - Skipped if server does not support Agents
+6. **Search** (RFC 7644 §3.4.2, §8.1)
   - GET `/Users` → asserts ListResponse envelope (`schemas`, `totalResults`, `Resources`), `Content-Type: application/scim+json`
   - GET `/Users?filter=...` → asserts 200 (or 400 if partial filter support)
   - GET `/Users?startIndex=1&count=1` → asserts pagination parameters honored
   - GET `/Users?count=0` → asserts `totalResults` present with empty `Resources`
-2. **Error Handling** (RFC 7644 §3.12)
+7. **Error Handling** (RFC 7644 §3.12)
   - GET nonexistent resource → asserts 404 with SCIM error schema (`schemas`, `status`)
   - POST invalid JSON body → asserts 400 with SCIM error schema
   - POST missing required field (`userName`) → asserts 400 with SCIM error schema
@@ -448,7 +460,7 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "scim_sanity_version": "0.7.0",
+  "scim_sanity_version": "0.7.3",
   "mode": "strict",
   "timestamp": "2026-02-24 09:15:00",
   "summary": {
@@ -579,10 +591,6 @@ Found 3 error(s):
   "Operations": [{"op": "replace", "path": "displayName", "value": "New Name"}]
 }
 ```
-
----
-
-## Integrations
 
 ---
 
