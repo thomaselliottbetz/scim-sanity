@@ -184,7 +184,7 @@ curl -X POST http://127.0.0.1:8000/api/probe \
 
 ```json
 {
-  "scim_sanity_version": "0.7.3",
+  "scim_sanity_version": "0.7.4",
   "mode": "strict",
   "timestamp": "2026-02-24 09:15:00",
   "summary": {
@@ -460,7 +460,7 @@ scim-sanity probe <url> --token <token> --json-output --i-accept-side-effects
 
 ```json
 {
-  "scim_sanity_version": "0.7.3",
+  "scim_sanity_version": "0.7.4",
   "mode": "strict",
   "timestamp": "2026-02-24 09:15:00",
   "summary": {

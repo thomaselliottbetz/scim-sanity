@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2026-10-25
+
+### Fixed
+- **Web GUI was missing from published wheels** — `pip install 'scim-sanity[web]'` has never included the frontend (0.6.0-0.7.3), so `scim-sanity web` served only the API and returned a "Frontend not built" error for every page. The frontend now builds into `scim_sanity/static/` and is included as package data. When the build is absent (e.g. a source checkout), the server now returns HTTP 503 instead of 200 with an error body.
+- **`__version__` reported 0.7.2** in the 0.7.3 release (CLI `--version`, API, probe JSON).
+- **README**: probe request documents `strict` (there is no `mode` field); `GET /api/examples` sample shows the real `{"examples": [...]}` shape; restored screenshots; fixed list numbering.
+
+### Security
+- **`POST /api/probe` now requires `i_accept_side_effects: true`** (HTTP 400 otherwise), matching the CLI's `--i-accept-side-effects`. Previously consent was enforced only by the web UI checkbox, so a direct API call ran the destructive probe without acknowledgment. **Compatibility note:** API callers that omit the field will now get a 400.
+- README now warns against binding the unauthenticated web server to a non-loopback address.
+
+### Added
+- `fortiauthenticator` profile output includes a basic-auth (`--username`/`--password`) example.
+
 ## [0.7.3] - 2026-09-29
 
 ### Security
