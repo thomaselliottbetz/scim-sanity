@@ -182,7 +182,7 @@ def main(ctx, file: Optional[str], patch: bool, read_stdin: bool):
 @click.option("--proxy", default=None, help="HTTP/HTTPS proxy URL. scim-sanity does not inherit HTTPS_PROXY/HTTP_PROXY env vars — pass this flag explicitly if your target requires a proxy.")
 @click.option("--ca-bundle", default=None, type=click.Path(exists=True), help="Path to custom CA certificate bundle")
 @click.option("--profile", default=None, type=click.Choice(list(PROFILES.keys())),
-              help="Named server profile (e.g. entra). Injects known server-specific fields into test payloads.")
+              help="Named server profile (may inject required fields and/or document known deviations; see 'scim-sanity profiles <name>').")
 @click.option("--extra-user-fields", default=None,
               help='Extra JSON fields merged into user creation payloads, e.g. \'{"password":"secret"}\'')
 @click.option("--user-domain", default=None,
