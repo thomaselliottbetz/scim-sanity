@@ -1,6 +1,6 @@
 # Google Workspace Integration Guide
 
-Google Workspace participates in SCIM provisioning primarily as a **SCIM server** — an external identity provider (such as Entra ID or Okta) provisions users inbound to Google Workspace via the [Cloud Identity SCIM API](https://cloud.google.com/identity/docs/how-to/scim-api).
+Google Workspace participates in SCIM provisioning primarily as a **SCIM server** — an external identity provider (such as Entra ID or Okta) provisions users inbound to Google Workspace via the [Cloud Identity SCIM API](https://knowledge.workspace.google.com/admin/users/get-started-with-inbound-scim).
 
 scim-sanity can probe your SCIM server for RFC 7643/7644 conformance and lint payloads your provisioning pipeline sends to Google.
 
@@ -22,7 +22,7 @@ scim-sanity probe https://your-app.example.com/scim/v2 \
     --i-accept-side-effects
 ```
 
-The probe runs CRUD lifecycle tests and reports RFC 7643/7644 conformance issues. When failures are present, a prioritised Fix Summary explains what to fix and why.
+The probe runs CRUD lifecycle tests and reports RFC 7643/7644 conformance issues. When failures are present, a prioritized Fix Summary explains what to fix and why.
 
 ```bash
 # Compat mode — known real-world deviations become warnings instead of failures
@@ -36,7 +36,7 @@ See the main [README](../../README.md) for full probe options.
 
 ## Provisioning to Google (Google as SCIM server)
 
-If you are provisioning users *into* Google Workspace from an external IdP via the Cloud Identity SCIM API, the expected payload follows the core User schema. Google's SCIM server uses `externalId` to correlate external directory entries with Google accounts. Consult the [Cloud Identity SCIM API documentation](https://cloud.google.com/identity/docs/how-to/scim-api) for the current attribute mapping reference, as Google's accepted attributes and extension support evolve independently of the core RFC.
+If you are provisioning users *into* Google Workspace from an external IdP via the Cloud Identity SCIM API, the expected payload follows the core User schema. Consult [Google's inbound SCIM documentation](https://knowledge.workspace.google.com/admin/users/get-started-with-inbound-scim) for current requirements, as Google's accepted attributes and extension support evolve independently of the core RFC.
 
 ## Payload Linting
 
@@ -55,7 +55,7 @@ echo '{"schemas":["urn:ietf:params:scim:schemas:core:2.0:User"],"userName":"user
 
 ## References
 
-- [Google Cloud Identity SCIM API](https://cloud.google.com/identity/docs/how-to/scim-api)
+- [Google Workspace: Get started with inbound SCIM](https://knowledge.workspace.google.com/admin/users/get-started-with-inbound-scim)
 - [Google Workspace Admin SDK — Manage Users](https://developers.google.com/admin-sdk/directory/v1/guides/manage-users)
 - [RFC 7643 - SCIM Core Schema](https://tools.ietf.org/html/rfc7643)
 - [RFC 7644 - SCIM Protocol](https://tools.ietf.org/html/rfc7644)

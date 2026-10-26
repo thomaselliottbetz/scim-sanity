@@ -40,7 +40,7 @@ jobs:
 
       - name: Validate all SCIM payloads
         run: |
-          for file in scim-payloads/**/*.json; do
+          find scim-payloads -name '*.json' -print0 | while IFS= read -r -d '' file; do
             echo "Validating $file..."
             scim-sanity "$file" || exit 1
           done
