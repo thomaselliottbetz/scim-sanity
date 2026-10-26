@@ -99,6 +99,7 @@ export interface ProbeRequest {
   token?: string
   username?: string
   password?: string
+  i_accept_side_effects: boolean
   strict: boolean
   resource?: string
   tls_no_verify: boolean

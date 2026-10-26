@@ -89,6 +89,7 @@ export default function ProbePage() {
         token: authType === 'bearer' ? token.trim() : undefined,
         username: authType === 'basic' ? username.trim() : undefined,
         password: authType === 'basic' ? password.trim() : undefined,
+        i_accept_side_effects: consent,
         strict,
         resource: resource.value || undefined,
         tls_no_verify: tlsNoVerify,

@@ -12,7 +12,7 @@ No validation or probe logic lives here. All business logic stays in the core.
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -42,6 +42,7 @@ class ProbeRequest(BaseModel):
     token: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
+    i_accept_side_effects: bool = False
     strict: bool = True
     resource: Optional[str] = None
     tls_no_verify: bool = False
@@ -146,8 +147,18 @@ _PROBE_RESPONSE_EXAMPLE = {
 def probe(req: ProbeRequest):
     """Run a conformance probe against a live SCIM server.
 
-    Side-effect consent is enforced by the caller (the web UI consent checkbox).
+    The probe creates, modifies, and deletes real resources on the target, so
+    ``i_accept_side_effects`` must be ``true`` (mirrors the CLI's
+    ``--i-accept-side-effects`` flag).
     """
+    if not req.i_accept_side_effects:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "i_accept_side_effects must be true: the probe creates, modifies, "
+                "and deletes real resources on the target server."
+            ),
+        )
     return run_probe_api(
         base_url=req.url,
         token=req.token,

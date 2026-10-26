@@ -228,7 +228,9 @@ def run_probe_api(
 ) -> dict:
     """Run the conformance probe and return a structured dict (for API use).
 
-    Side-effect consent is handled by the API caller (the web UI consent checkbox).
+    Side-effect consent is enforced by the REST layer (``i_accept_side_effects``
+    on ``POST /api/probe``); direct callers of this function are responsible for
+    obtaining it themselves.
     Results are returned as a dict matching the --json-output shape with an
     added ``exit_code`` field and ``version`` alias for ``scim_sanity_version``.
     """
